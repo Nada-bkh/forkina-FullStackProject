@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -18,6 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { isAuthenticated } from '../utils/authUtils';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   marginTop: theme.spacing(8),
@@ -58,6 +59,12 @@ const SignUp = () => {
     educationLevel: ''
   });
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isAuthenticated()) {
+      navigate('/admin');
+    }
+  }, [navigate]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;

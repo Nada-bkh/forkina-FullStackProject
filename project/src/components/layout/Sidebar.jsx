@@ -7,25 +7,33 @@ import {
   ListItemButton,
   Toolbar,
   Box,
-  Divider
+  Divider,
+  Typography,
+  Avatar
 } from '@mui/material';
 import {
   People as PeopleIcon,
   Person as PersonIcon,
   School as SchoolIcon,
   Assignment as AssignmentIcon,
-  ExitToApp as ExitToAppIcon
+  ExitToApp as ExitToAppIcon,
+  AccountCircle as AccountCircleIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 const drawerWidth = 240;
 import './Sidebar.css';
 
-const Sidebar = () => {
+const Sidebar = ({ user }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const menuItems = [
+    {
+      text: 'Profile',
+      icon: <AccountCircleIcon style={{ color: 'white' }} />,
+      path: '/admin/profile'
+    },
     {
       text: 'Users Management',
       icon: <PeopleIcon style={{ color: 'white' }} />,
@@ -110,6 +118,28 @@ const Sidebar = () => {
 
         <Divider />
         
+        {user && (
+          <Box sx={{ p: 2, textAlign: 'center' }}>
+            <Avatar 
+              src={user.profilePicture || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
+              sx={{ 
+                width: 80, 
+                height: 80, 
+                margin: '0 auto 1rem',
+                bgcolor: '#dd2825'
+              }}
+            >
+              {!user.profilePicture && user.firstName?.charAt(0)}
+            </Avatar>
+            <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'bold' }}>
+              {user.firstName} {user.lastName}
+            </Typography>
+
+          </Box>
+        )}
+
+        <Divider />
+        
         <List>
           {menuItems.map((item) => (
             <Box key={item.text}>
@@ -145,7 +175,7 @@ const Sidebar = () => {
              <ListItem disablePadding>
           <ListItemButton onClick={handleLogout}>
             <ListItemIcon>
-              <ExitToAppIcon />
+              <ExitToAppIcon style={{ color: 'white' }} />
             </ListItemIcon>
             <ListItemText primary="Logout" />
           </ListItemButton>

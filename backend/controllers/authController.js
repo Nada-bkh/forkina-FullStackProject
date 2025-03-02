@@ -3,13 +3,16 @@ const User = require("../models/userModel");
 const generateToken = require("../utils/generateToken");
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const fetch = require('node-fetch');
 const BASE_URL = process.env.NODE_ENV === 'production' ? 'https://mon-app.com' : 'http://localhost:5173';
+const { OAuth2Client } = require('google-auth-library');
+const jwt = require('jsonwebtoken');
 
 const PasswordResetToken = require('../models/PasswordResetToken');
 
 const invalidatedTokens = new Set();
 
-// Enregistrement d'un utilisateur avec création d'admin
+// Register function
 exports.register = async (req, res) => {
   const { firstName, lastName, email, password, role, adminSecret } = req.body;
 
@@ -51,39 +54,57 @@ exports.register = async (req, res) => {
   }
 };
 
-// Connexion de l'utilisateur avec gestion de session
+// Login function
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Trouver l'utilisateur par son email
+    // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: "Identifiants invalides" });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Comparer le mot de passe fourni avec le hash du mot de passe stocké
+    // Compare password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Identifiants invalides" });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Créer un token JWT (si nécessaire)
-    const token = generateToken(user);
+    // Create JWT token with consistent field names
+    const token = jwt.sign(
+      { 
+        id: user._id.toString(), // Convert ObjectId to string
+        email: user.email,
+        role: user.userRole 
+      },
+      process.env.JWT_SECRET || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMzQ1NiIsInJvbGUiOiJTVFVERU5UIiwiaWF0IjoxNzQwMTM1NjEyLCJleHAiOjE3NDA3NDA0MTJ9.zUhKAi8PO7X8IAfPcbGw2j2LhdtuLBW6ww2E0VuthXU",
+      { expiresIn: '7d' }
+    );
 
-    // Créer une session pour l'utilisateur
-    req.session.userId = user._id;  // Stocker l'ID de l'utilisateur dans la session
-    req.session.userRole = user.userRole; // Stocker le rôle dans la session (optionnel)
+    // Create session
+    req.session.userId = user._id;
+    req.session.userRole = user.userRole;
 
-    // Retourner le token et une réponse de succès
-    res.json({ message: "Connexion réussie", token, session: req.session });
+    // Send response with user info
+    res.json({ 
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.userRole,
+        firstName: user.firstName,
+        lastName: user.lastName
+      }
+    });
   } catch (error) {
-    res.status(500).json({ message: "Erreur du serveur", error: error.message });
+    console.error('Login error:', error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-
-// Deconnexion
+// Logout function
 exports.logout = async (req, res) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -120,7 +141,7 @@ exports.logout = async (req, res) => {
   }
 };
 
-// Middleware to check authentication
+// Check token validity
 exports.checkTokenValidity = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -147,7 +168,7 @@ exports.checkTokenValidity = async (req, res, next) => {
   }
 };
 
-// Demande de réinitialisation de mot de passe
+// Forgot password
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
 
@@ -193,7 +214,7 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// Réinitialisation du mot de passe
+// Reset password
 exports.resetPassword = async (req, res) => {
   const { token, newPassword } = req.body;
 
@@ -220,4 +241,76 @@ exports.resetPassword = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Erreur lors de la réinitialisation du mot de passe", error: error.message });
   }
+};
+
+// Google login
+exports.googleLogin = async (req, res) => {
+  try {
+    const { email, firstName, lastName, picture, accessToken } = req.body;
+
+    if (!email || !accessToken) {
+      return res.status(400).json({ message: 'Email and access token are required' });
+    }
+
+    // Verify Google token
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: accessToken,
+        audience: process.env.GOOGLE_CLIENT_ID
+      });
+      const payload = ticket.getPayload();
+      
+      if (payload.email !== email) {
+        return res.status(401).json({ message: 'Email verification failed' });
+      }
+    } catch (verifyError) {
+      console.error('Token verification failed:', verifyError);
+      return res.status(401).json({ message: 'Invalid Google token' });
+    }
+
+    // Find or create user
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      user = new User({
+        email,
+        firstName,
+        lastName,
+        userRole: 'STUDENT',
+        accountStatus: true,
+        isGoogleUser: true,
+        profilePicture: picture,
+        password: crypto.randomBytes(20).toString('hex')
+      });
+      await user.save();
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: user._id,
+        role: user.userRole,
+        email: user.email 
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({ token });
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(500).json({ message: 'Server error during Google authentication' });
+  }
+};
+
+// Export all functions
+module.exports = {
+  register: exports.register,
+  login: exports.login,
+  logout: exports.logout,
+  checkTokenValidity: exports.checkTokenValidity,
+  forgotPassword: exports.forgotPassword,
+  resetPassword: exports.resetPassword,
+  googleLogin: exports.googleLogin
 };

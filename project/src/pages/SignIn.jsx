@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import GitHubIcon from '@mui/icons-material/GitHub';
+import { useGoogleLogin } from '@react-oauth/google';
+import { isAuthenticated } from '../utils/authUtils';
 
 import { 
   Box,
@@ -53,6 +55,12 @@ const SignIn = () => {
   });
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (isAuthenticated()) {
+      navigate('/admin');
+    }
+  }, [navigate]);
+
   const handleChange = (event) => {
     const { name, value, checked } = event.target;
     setFormData(prev => ({
@@ -93,6 +101,20 @@ const SignIn = () => {
       setError(err.message);
       console.error('Login error:', err);
     }
+  };
+
+  const googleLogin = () => {
+    window.open(
+      "http://localhost:5001/auth/google",
+      "_self"
+    );
+  };
+
+  const githubLogin = () => {
+    window.open(
+      "http://localhost:5001/auth/github",
+      "_self"
+    );
   };
 
   return (
@@ -177,24 +199,23 @@ const SignIn = () => {
           </Box>
 
           <StyledButton
-  fullWidth
-  variant="outlined"
-  startIcon={<GoogleIcon />}
-  onClick={() => console.log('Google sign in')}
->
-  Sign in using Google
-</StyledButton>
+            fullWidth
+            variant="outlined"
+            startIcon={<GoogleIcon />}
+            onClick={googleLogin}
+          >
+            Sign in using Google
+          </StyledButton>
 
-<StyledButton
-  fullWidth
-  variant="outlined"
-  startIcon={<GitHubIcon />}
-  onClick={() => console.log('GitHub sign in')}
-  style={{ marginTop: '1px' }} // Réduction de l'espace entre les boutons
->
-  Sign in using GitHub
-</StyledButton>
-
+          <StyledButton
+            fullWidth
+            variant="outlined"
+            startIcon={<GitHubIcon />}
+            onClick={githubLogin}
+            style={{ marginTop: '1px' }}
+          >
+            Sign in using GitHub
+          </StyledButton>
 
           <Box sx={{ mt: 2, textAlign: 'center' }}>
             <Link

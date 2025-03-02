@@ -1,6 +1,7 @@
 // models/userModel.js
 const mongoose = require('mongoose');
 const bcrypt = require("bcryptjs");
+const jwt = require('jsonwebtoken');
 const { Schema } = mongoose;
 
 const UserRole = {
@@ -12,14 +13,30 @@ const UserRole = {
 const userSchema = new Schema(
   {
     firstName: { type: String, required: true },
-    lastName:  { type: String, required: true },
-    email:     { type: String, required: true, unique: true },
-    password:  { type: String, required: true },
-    failedAttempts: { type: Number, default: 0 }, // Compteur d'échecs
+    lastName: { type: String, required: true },
+    email: { 
+      type: String, 
+      required: true, 
+      unique: true,
+      lowercase: true,
+      trim: true
+    },
+    password: { 
+      type: String, 
+      required: function() {
+        return !this.isGoogleUser && !this.isGithubUser; // Password not required for OAuth users
+      }
+    },
+    educationLevel: {
+      type: String,
+      enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'],
+      default: 'BEGINNER'
+    },
+    isGoogleUser: { type: Boolean, default: false },
+    isGithubUser: { type: Boolean, default: false },
     accountStatus: { type: Boolean, default: true },
-    isVerified: { type: Boolean, default: false },
     phone: { type: String },
-    userRole:  {
+    userRole: {
       type: String,
       enum: Object.values(UserRole),
       default: UserRole.STUDENT
@@ -28,14 +45,34 @@ const userSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: 'Team',
       default: null
-    }
+    },
+    profilePicture: { type: String },
+    lastLogin: { type: Date },
+    loginCount: { type: Number, default: 0 },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    githubId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    avatar: {
+      type: String,
+    },
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+  }
 );
 
 // Pre-save middleware to hash password if modified
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+  if (!this.isModified("password") || !this.password) return next();
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -47,10 +84,25 @@ userSchema.pre("save", async function (next) {
 
 // Instance method to compare passwords during login
 userSchema.methods.comparePassword = async function (candidatePassword) {
+  if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Remove sensitive fields from responses
+// Generate JWT token
+userSchema.methods.generateToken = function() {
+  return jwt.sign(
+    { 
+      id: this._id,
+      email: this.email,
+      role: this.userRole,
+      isGoogleUser: this.isGoogleUser
+    },
+    process.env.JWT_SECRET || 'your-jwt-secret',
+    { expiresIn: '7d' }
+  );
+};
+
+// Remove sensitive data from responses
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;

@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import GitHubIcon from '@mui/icons-material/GitHub';
+import { useGoogleLogin } from '@react-oauth/google';
+import { isAuthenticated } from '../utils/authUtils';
+
 import { 
   Box,
   Container,
@@ -38,7 +41,7 @@ const StyledButton = styled(Button)(({ theme }) => ({
   '&.MuiButton-containedPrimary': {
     backgroundColor: '#dd2825',
     '&:hover': {
-      backgroundColor: 'rgba(221, 40, 37, 0.7)',
+      backgroundColor: 'rgba(221, 40, 37, 0.7)', // Même couleur au survol
     },
   },
 }));
@@ -51,10 +54,12 @@ const SignIn = () => {
     rememberMe: false
   });
   const [error, setError] = useState('');
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  const [disabledTime, setDisabledTime] = useState(0);
-  const [emailError, setEmailError] = useState('');
-  const [emailValid, setEmailValid] = useState(false); // Nouveau state pour gérer la validité de l'email
+
+  useEffect(() => {
+    if (isAuthenticated()) {
+      navigate('/admin');
+    }
+  }, [navigate]);
 
   const handleChange = (event) => {
     const { name, value, checked } = event.target;
@@ -62,39 +67,12 @@ const SignIn = () => {
       ...prev,
       [name]: name === 'rememberMe' ? checked : value
     }));
-
-    if (name === 'email') {
-      validateEmail(value);
-    }
-  };
-
-  const validateEmail = (email) => {
-    // Expression régulière pour valider l'email
-    const emailRegex = /^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)?@(gmail|esprit|outlook)\.(tn|com)$/;
-    if (!emailRegex.test(email)) {
-      setEmailError('la forme de l\'adresse email est invalide.');
-      setEmailValid(false);  // L'email n'est pas valide
-    } else {
-      setEmailError('');
-      setEmailValid(true);  // L'email est valide
-    }
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
-  
-    // Vérification si l'email et le mot de passe sont vides
-    if (!formData.email || !formData.password) {
-      setError('Your fields are empty. Please enter your email and password.'); // Message d'erreur en anglais
-      return;
-    }
-  
-    // Vérification si l'email est valide avant la soumission
-    if (emailError) {
-      return;
-    }
-  
+    
     try {
       const response = await fetch('http://localhost:5001/api/auth/login', {
         method: 'POST',
@@ -103,95 +81,78 @@ const SignIn = () => {
         },
         body: JSON.stringify({
           email: formData.email,
-          password: formData.password,
-        }),
+          password: formData.password
+        })
       });
-  
+
       const data = await response.json();
-  
+
       if (!response.ok) {
         throw new Error(data.message || 'Failed to login');
       }
-  
-      // Sauvegarder le token
+
+      // Save token
       localStorage.setItem('token', data.token);
-  
-      // Rediriger vers le tableau de bord admin
+      
+      // Redirect to admin dashboard instead of /dashboard
       navigate('/admin');
-  
+      
     } catch (err) {
       setError(err.message);
-      setFailedAttempts(prev => prev + 1);  // Incrementer les tentatives échouées
-  
-      if (failedAttempts + 1 === 3) {
-        setDisabledTime(5);
-        const timeoutId = setTimeout(() => {
-          setDisabledTime(0);
-        }, 5000);
-  
-        return () => clearTimeout(timeoutId);
-      }
-  
       console.error('Login error:', err);
     }
   };
-  
-  
+
+  const googleLogin = () => {
+    window.open(
+      "http://localhost:5001/auth/google",
+      "_self"
+    );
+  };
+
+  const githubLogin = () => {
+    window.open(
+      "http://localhost:5001/auth/github",
+      "_self"
+    );
+  };
 
   return (
     <Container component="main" maxWidth="xs">
       <StyledPaper elevation={6}>
-        <Box
-          component="div"
-          sx={{
-            flexGrow: 1,
-            display: 'flex',
-            alignItems: 'center'
-          }}
-        >
-          <img 
-            src="logo.png" 
-            alt="" 
-            style={{ height: '70px' }} 
-          />
-        </Box>
+      <Box
+    component="div"
+    sx={{
+      flexGrow: 1,
+      display: 'flex',
+      alignItems: 'center'
+    }}
+  >
+    <img 
+    src="logo.png" 
+    alt="" 
+    style={{ height: '70px' }} 
+  />
+    </Box>
         {error && (
           <Alert severity="error" sx={{ mb: 2, width: '100%' }}>
             {error}
           </Alert>
         )}
-        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }} noValidate>
-        <TextField
-  margin="normal"
-  required
-  fullWidth
-  id="email"
-  label="Email"
-  name="email"
-  autoComplete="email"
-  autoFocus
-  value={formData.email}
-  onChange={handleChange}
-  sx={{
-    mb: 2,
-    '& .MuiOutlinedInput-root': {
-      '&:hover fieldset': {
-        borderColor: emailValid ? '#3A9D23' : '',  // Bordure verte au survol si l'email est valide
-      },
-      '&.Mui-focused fieldset': {
-        borderColor: emailValid ? '#3A9D23' : '',  // Bordure verte lors du focus si l'email est valide
-      },
-      '& fieldset': {
-        borderColor: emailValid ? '#3A9D23' : '',  // Bordure verte si l'email est valide
-      },
-    },
-  }}
-  disabled={disabledTime > 0}
-  error={!!emailError}  // Si il y a une erreur d'email, on met l'input en erreur
-  helperText={emailError}  // Message d'erreur sous l'input
-/>
-
-
+        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="email"
+            label="Email"
+            name="email"
+            autoComplete="email"
+            autoFocus
+            value={formData.email}
+            onChange={handleChange}
+            sx={{ mb: 2 }}
+          />
           <TextField
             margin="normal"
             required
@@ -204,7 +165,6 @@ const SignIn = () => {
             value={formData.password}
             onChange={handleChange}
             sx={{ mb: 2 }}
-            disabled={disabledTime > 0}
           />
           <FormControlLabel
             control={
@@ -214,26 +174,24 @@ const SignIn = () => {
                 checked={formData.rememberMe}
                 onChange={handleChange}
                 color="primary"
-                disabled={disabledTime > 0}
               />
             }
             label="Remember Me"
           />
-          <StyledButton
-            type="submit"
-            fullWidth
-            variant="contained"
-            color="primary"
-            disabled={disabledTime > 0}
-            sx={{
-              //color: '#FFFFFF',  // This sets the text color to white
-              // or
-              color: 'white'     // This also works
-            }}
-          >
-            Sign In
-          </StyledButton>
-
+<StyledButton
+  type="submit"
+  fullWidth
+  variant="contained"
+  color="primary"
+  sx={{
+    //color: '#FFFFFF',  // This sets the text color to white
+    // or
+    color: 'white'     // This also works
+  }}
+>
+  Sign In
+</StyledButton>
+          
           <Box sx={{ my: 2, textAlign: 'center' }}>
             <Divider sx={{ my: 2 }}>
               <Typography color="textSecondary">OR</Typography>
@@ -244,8 +202,7 @@ const SignIn = () => {
             fullWidth
             variant="outlined"
             startIcon={<GoogleIcon />}
-            onClick={() => console.log('Google sign in')}
-            disabled={disabledTime > 0}
+            onClick={googleLogin}
           >
             Sign in using Google
           </StyledButton>
@@ -254,9 +211,8 @@ const SignIn = () => {
             fullWidth
             variant="outlined"
             startIcon={<GitHubIcon />}
-            onClick={() => console.log('GitHub sign in')}
+            onClick={githubLogin}
             style={{ marginTop: '1px' }}
-            disabled={disabledTime > 0}
           >
             Sign in using GitHub
           </StyledButton>
@@ -274,6 +230,7 @@ const SignIn = () => {
               href="#"
               variant="body2"
               onClick={() => navigate('/signup')}
+              
             >
               Register a new membership
             </Link>

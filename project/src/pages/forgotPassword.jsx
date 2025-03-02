@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Box, Container, TextField, Button, Typography, Link, Paper, Alert } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
+import { isAuthenticated } from '../utils/authUtils';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   marginTop: theme.spacing(8),
@@ -33,6 +34,12 @@ const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated()) {
+      navigate('/admin');
+    }
+  }, [navigate]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

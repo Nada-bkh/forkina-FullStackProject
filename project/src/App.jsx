@@ -13,6 +13,7 @@ import ResetPassword from "./pages/reserPassword";
 import SubmitTask from "./pages/admin/SubmitTask"; 
 import Profile from "./pages/admin/Profile";
 import AuthTransfer from "./pages/AuthTransfer";
+import VerifyEmail from "./pages/VerifyEmail";
 
 
 const theme = createTheme({
@@ -69,6 +70,7 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/auth-transfer" element={<AuthTransfer />} />
+            <Route path="/verify-email/:token" element={<VerifyEmail />} />
 
             
             {/* Admin Dashboard Routes */}

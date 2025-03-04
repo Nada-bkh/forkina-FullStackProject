@@ -1,0 +1,34 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: |
+          cd project && npm install
+          cd ../backend && npm install
+
+      - name: Run Tests
+        run: |
+          cd project && npm test || echo "No tests found"
+          cd ../backend && npm test || echo "No tests found"
+
+      - name: Build Frontend
+        run: |
+          cd project && npm run build

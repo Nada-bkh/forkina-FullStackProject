@@ -19,6 +19,7 @@ const evaluationRoutes = require('./routes/evaluationRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const authRoutes = require('./routes/authRoutes');
 const googleAuthRoutes = require('./routes/auth');
+const subjectRoutes = require('./routes/subjectRoutes');
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/milestones', milestoneRoutes);
 app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/subjects', subjectRoutes);
 
 // Handle React routing, return all requests to React app
 app.get('*', (req, res) => {

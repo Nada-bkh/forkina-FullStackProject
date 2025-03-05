@@ -14,6 +14,7 @@ import SubmitTask from "./pages/admin/SubmitTask";
 import Profile from "./pages/admin/Profile";
 import AuthTransfer from "./pages/AuthTransfer";
 import VerifyEmail from "./pages/VerifyEmail";
+import ProjectPage from "./pages/admin/AddProject";
 
 
 const theme = createTheme({
@@ -71,7 +72,6 @@ const App = () => (
             <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/auth-transfer" element={<AuthTransfer />} />
             <Route path="/verify-email/:token" element={<VerifyEmail />} />
-
             
             {/* Admin Dashboard Routes */}
             <Route path="/admin" element={<DashboardLayout />}>
@@ -80,7 +80,8 @@ const App = () => (
               <Route path="users" element={<UsersList />} />
               <Route path="users/students" element={<UsersList />} />
               <Route path="users/tutors" element={<UsersList />} />
-              <Route path="submit-task" element={<SubmitTask />} /> 
+              <Route path="submit-task" element={<SubmitTask />} />
+              <Route path="add-project" element={<ProjectPage />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

@@ -5,10 +5,6 @@ const projectController = require('../controllers/projectController');
 const jwt = require('jsonwebtoken');
 
 router.post('/', projectController.createProject);
-router.get('/', projectController.getAllProjects);
-router.get('/:id', projectController.getProjectById);
-router.put('/:id', projectController.updateProject);
-router.delete('/:id', projectController.deleteProject);
 
 // Middleware to verify if the user is a student
 const verifyStudent = (req, res, next) => {

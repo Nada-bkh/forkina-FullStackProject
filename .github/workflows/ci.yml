@@ -30,7 +30,7 @@ jobs:
 
       - name: Build Frontend
         run: |
-          cd project && npm run build
+          cd project && npm run dev
 
       - name: Install Vercel CLI
         run: npm install -g vercel

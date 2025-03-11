@@ -7,14 +7,33 @@ import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
 import DashboardLayout from "./components/layout/DashboardLayout";
+import StudentDashboardLayout from "./components/layout/StudentDashboardLayout";
+import TutorDashboardLayout from "./components/layout/TutorDashboardLayout";
 import UsersList from "./pages/admin/UsersList";
 import ForgotPassword from "./pages/forgotPassword";
 import ResetPassword from "./pages/reserPassword";
 import SubmitTask from "./pages/admin/SubmitTask"; 
 import Profile from "./pages/admin/Profile";
+import StudentDashboard from "./pages/student/Dashboard";
+import TutorDashboard from "./pages/tutor/Dashboard";
 import AuthTransfer from "./pages/AuthTransfer";
 import VerifyEmail from "./pages/VerifyEmail";
-
+import ProjectsList from "./pages/tutor/ProjectsList";
+import ProjectCreate from "./pages/tutor/ProjectCreate";
+import ProjectDetails from "./pages/tutor/ProjectDetails";
+import ProjectEdit from "./pages/tutor/ProjectEdit";
+import TasksList from "./pages/tutor/TasksList";
+import TaskCreate from "./pages/tutor/TaskCreate";
+import TaskDetails from "./pages/tutor/TaskDetails";
+import TaskEdit from "./pages/tutor/TaskEdit";
+import StudentProjectsList from "./pages/student/ProjectsList";
+import StudentProjectDetails from "./pages/student/ProjectDetails";
+import StudentTasksList from "./pages/student/TasksList";
+import StudentTaskDetails from "./pages/student/TaskDetails";
+import StudentsList from './pages/tutor/StudentsList';
+import ClassesList from './pages/tutor/ClassesList'; // New import pages/tutor/ClassesList
+import ClassDetails from './pages/tutor/components/ClassDetails'; // New import
+import ClassesManagement from './pages/admin/ClassesManagement'; // New import
 
 const theme = createTheme({
   palette: {
@@ -72,7 +91,6 @@ const App = () => (
             <Route path="/auth-transfer" element={<AuthTransfer />} />
             <Route path="/verify-email/:token" element={<VerifyEmail />} />
 
-            
             {/* Admin Dashboard Routes */}
             <Route path="/admin" element={<DashboardLayout />}>
               <Route index element={<Navigate to="/admin/users" replace />} />
@@ -80,7 +98,42 @@ const App = () => (
               <Route path="users" element={<UsersList />} />
               <Route path="users/students" element={<UsersList />} />
               <Route path="users/tutors" element={<UsersList />} />
-              <Route path="submit-task" element={<SubmitTask />} /> 
+              <Route path="submit-task" element={<SubmitTask />} />
+              <Route path="classes" element={<ClassesManagement />} /> {/* New route */}
+            </Route>
+
+            {/* Student Dashboard Routes */}
+            <Route path="/student" element={<StudentDashboardLayout />}>
+              <Route index element={<StudentDashboard />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="projects" element={<StudentProjectsList />} />
+              <Route path="projects/:projectId" element={<StudentProjectDetails />} />
+              <Route path="projects/:projectId/tasks" element={<StudentTasksList />} />
+              <Route path="projects/:projectId/tasks/:taskId" element={<StudentTaskDetails />} />
+              <Route path="tasks" element={<StudentTasksList />} />
+              <Route path="tasks/:taskId" element={<StudentTaskDetails />} />
+              <Route path="team" element={<div>Team Page</div>} />
+            </Route>
+
+            {/* Tutor Dashboard Routes */}
+            <Route path="/tutor" element={<TutorDashboardLayout />}>
+              <Route index element={<TutorDashboard />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="students" element={<StudentsList />} />
+              <Route path="evaluations" element={<div>Evaluations Page</div>} />
+              <Route path="projects" element={<ProjectsList />} />
+              <Route path="projects/create" element={<ProjectCreate />} />
+              <Route path="projects/:projectId" element={<ProjectDetails />} />
+              <Route path="projects/:projectId/edit" element={<ProjectEdit />} />
+              <Route path="projects/:projectId/tasks" element={<TasksList />} />
+              <Route path="projects/:projectId/tasks/create" element={<TaskCreate />} />
+              <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetails />} />
+              
+              <Route path="projects/:projectId/tasks/:taskId/edit" element={<TaskEdit />} />
+              <Route path="classes" element={<ClassesList />} /> {/* New route */}
+              <Route path="classes/:classId" element={<ClassDetails />} /> {/* New route */}
+              <Route path="assignments" element={<div>Assignments Page</div>} /> {/* New route */}
+              <Route path="groups" element={<div>Groups Page</div>} /> {/* New route */}
             </Route>
 
             <Route path="*" element={<NotFound />} />

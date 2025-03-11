@@ -1,3 +1,4 @@
+
 // src/components/layout/DashboardLayout.jsx
 import { useState, useEffect } from 'react';
 import { Box, Toolbar, Typography } from '@mui/material';
@@ -24,6 +25,15 @@ const DashboardLayout = () => {
         if (response.ok) {
           const data = await response.json();
           setUser(data);
+          
+          // Rediriger si l'utilisateur n'est pas un admin
+          if (data.userRole !== 'ADMIN') {
+            if (data.userRole === 'STUDENT') {
+              window.location.replace('/student');
+            } else if (data.userRole === 'TUTOR') {
+              window.location.replace('/tutor');
+            }
+          }
         }
       } catch (error) {
         console.error('Error fetching user profile:', error);
@@ -32,6 +42,10 @@ const DashboardLayout = () => {
 
     fetchUserProfile();
   }, []);
+
+  const updateUser = (newUserData) => {
+    setUser(newUserData);
+  };
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}> {/* Ensure full height layout */}
@@ -64,7 +78,7 @@ const DashboardLayout = () => {
             </Typography>
           </Box>
         )}
-        <Outlet />
+        <Outlet context={{ user, updateUser }} />
       </Box>
     </Box>
   );

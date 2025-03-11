@@ -17,7 +17,12 @@ import {
   Typography,
   LinearProgress,
   Alert,
-  Snackbar
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -38,6 +43,8 @@ const UsersList = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [classDialogOpen, setClassDialogOpen] = useState(false);
+  const [newClass, setNewClass] = useState('');
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -94,6 +101,28 @@ const UsersList = () => {
     },
     onError: () => {
       showSnackbar('Failed to create user', 'error');
+    }
+  });
+
+  // Mutation pour assigner une classe
+  const assignClassMutation = useMutation({
+    mutationFn: updateUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setSnackbar({
+        open: true,
+        message: 'Classe assignée avec succès',
+        severity: 'success'
+      });
+      setClassDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error('Erreur lors de l\'assignation de classe:', error);
+      setSnackbar({
+        open: true,
+        message: `Erreur: ${error.message || 'Échec de l\'assignation de classe'}`,
+        severity: 'error'
+      });
     }
   });
 
@@ -159,6 +188,22 @@ const UsersList = () => {
 
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
+  };
+
+  const handleQuickClassAssign = (user) => {
+    setSelectedUser(user);
+    setNewClass(user.classe === '--' ? '' : user.classe);
+    setClassDialogOpen(true);
+  };
+
+  const handleClassAssignSubmit = () => {
+    if (selectedUser) {
+      // Envoi uniquement des champs nécessaires pour éviter tout conflit
+      assignClassMutation.mutate({
+        _id: selectedUser._id,
+        classe: newClass || '--'
+      });
+    }
   };
 
   if (isLoading) return <LinearProgress />;
@@ -253,6 +298,12 @@ const UsersList = () => {
               <TableRow>
                 <TableCell>Name</TableCell>
                 <TableCell>Email</TableCell>
+                {getRole() === 'STUDENT' && (
+                  <>
+                    <TableCell>CIN</TableCell>
+                    <TableCell>Classe</TableCell>
+                  </>
+                )}
                 <TableCell>Role</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell align="right">Actions</TableCell>
@@ -265,6 +316,36 @@ const UsersList = () => {
                     {user.firstName} {user.lastName}
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
+                  {getRole() === 'STUDENT' && (
+                    <>
+                      <TableCell>{user.cin || 'Non renseigné'}</TableCell>
+                      <TableCell>
+                        {user.classe === '--' ? (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Chip label="Non affecté" size="small" color="warning" />
+                            <IconButton
+                              size="small"
+                              title="Assigner une classe"
+                              onClick={() => handleQuickClassAssign(user)}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        ) : (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {user.classe}
+                            <IconButton
+                              size="small"
+                              title="Modifier la classe"
+                              onClick={() => handleQuickClassAssign(user)}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        )}
+                      </TableCell>
+                    </>
+                  )}
                   <TableCell>
                     <Chip 
                       label={user.userRole || user.role || 'N/A'} 
@@ -336,6 +417,31 @@ const UsersList = () => {
         onSubmit={handleEditSubmit}
         user={selectedUser}
       />
+
+      {/* Boîte de dialogue pour assigner une classe */}
+      <Dialog open={classDialogOpen} onClose={() => setClassDialogOpen(false)}>
+        <DialogTitle>
+          {selectedUser?.classe === '--' ? 'Assigner une classe' : 'Modifier la classe'}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Classe"
+            fullWidth
+            value={newClass}
+            onChange={(e) => setNewClass(e.target.value)}
+            placeholder="Exemple: 3A15, 2B22, etc."
+            helperText="Entrez la classe de l'étudiant"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setClassDialogOpen(false)}>Annuler</Button>
+          <Button onClick={handleClassAssignSubmit} variant="contained" color="primary">
+            Enregistrer
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Snackbar */}
       <Snackbar

@@ -1,3 +1,4 @@
+
 // routes/userRoutes.js
 const express = require('express');
 const router = express.Router();
@@ -22,25 +23,61 @@ router.get('/profile', authMiddleware, async (req, res) => {
 // Update user profile
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const { firstName, lastName, email, educationLevel } = req.body;
+    const updateData = req.body;
     
-    // Check if user is updating their own profile
-    if (req.user.id !== req.params.id) {
+    // Vérifier si l'utilisateur est autorisé à mettre à jour ce profil
+    // Les administrateurs peuvent mettre à jour n'importe quel profil
+    // Les utilisateurs normaux ne peuvent mettre à jour que leur propre profil
+    if (req.user.id !== req.params.id && req.user.role !== 'ADMIN') {
       return res.status(403).json({ message: 'Not authorized to update this profile' });
     }
 
-    // Find user and update
+    // Find user
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Update fields
-    user.firstName = firstName;
-    user.lastName = lastName;
-    user.email = email;
-    if (user.userRole === 'STUDENT') {
-      user.educationLevel = educationLevel;
+    // Mise à jour conditionnelle des champs - ne mettre à jour que les champs présents dans la requête
+    if (updateData.firstName !== undefined) user.firstName = updateData.firstName;
+    if (updateData.lastName !== undefined) user.lastName = updateData.lastName;
+    if (updateData.email !== undefined) user.email = updateData.email;
+    if (updateData.profilePicture !== undefined) user.profilePicture = updateData.profilePicture;
+    if (updateData.educationLevel !== undefined && user.userRole === 'STUDENT') {
+      user.educationLevel = updateData.educationLevel;
+    }
+    
+    // Mise à jour du statut du compte
+    if (updateData.accountStatus !== undefined) {
+      user.accountStatus = updateData.accountStatus;
+    }
+    
+    // Seuls les administrateurs peuvent modifier le rôle et la classe d'un utilisateur
+    if (req.user.role === 'ADMIN') {
+      // Update role if provided
+      if (updateData.userRole !== undefined) {
+        user.userRole = updateData.userRole;
+      }
+      
+      // Update class for students
+      if (user.userRole === 'STUDENT' && updateData.classe !== undefined) {
+        user.classe = updateData.classe;
+      }
+    }
+    
+    // Mettre à jour le CIN si fourni et si c'est un étudiant
+    if (user.userRole === 'STUDENT' && updateData.cin !== undefined) {
+      user.cin = updateData.cin;
+    }
+
+    // Update department
+    if (updateData.department !== undefined) {
+      user.department = updateData.department;
+    }
+
+    // Update birth date
+    if (updateData.birthDate !== undefined) {
+      user.birthDate = updateData.birthDate;
     }
 
     // Save updated user

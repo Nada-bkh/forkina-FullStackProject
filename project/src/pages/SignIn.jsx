@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import GitHubIcon from '@mui/icons-material/GitHub';
-import { useGoogleLogin } from '@react-oauth/google';
 import { isAuthenticated } from '../utils/authUtils';
+import FaceLogin from '../components/FaceLogin';
+import FaceIcon from '@mui/icons-material/Face';
 
 import { 
   Box,
@@ -14,11 +16,13 @@ import {
   Link,
   Paper,
   Divider,
-  Alert
+  Alert,
+  Dialog
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import GoogleIcon from '@mui/icons-material/Google';
+import { Link as RouterLink } from 'react-router-dom';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   marginTop: theme.spacing(8),
@@ -54,12 +58,54 @@ const SignIn = () => {
     rememberMe: false
   });
   const [error, setError] = useState('');
+  const [remainingAttempts, setRemainingAttempts] = useState(3);
+  const [blockedUntil, setBlockedUntil] = useState(null);
+  const [remainingTime, setRemainingTime] = useState({ minutes: 0, seconds: 0 });
+  const [showFaceLogin, setShowFaceLogin] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated()) {
       navigate('/admin');
     }
   }, [navigate]);
+
+  useEffect(() => {
+    // Si le compte est bloqué, mettre à jour le blockedUntil toutes les secondes
+    let interval;
+    if (blockedUntil) {
+      // Mettre à jour le temps restant immédiatement
+      updateRemainingTime();
+      
+      // Puis lancer l'intervalle pour mettre à jour chaque seconde
+      interval = setInterval(() => {
+        if (blockedUntil && blockedUntil < Date.now()) {
+          setBlockedUntil(null);
+          setRemainingAttempts(3);
+          clearInterval(interval);
+        } else {
+          updateRemainingTime();
+        }
+      }, 1000);
+    }
+    
+    return () => clearInterval(interval);
+  }, [blockedUntil]);
+
+  // Fonction pour calculer et mettre à jour le temps restant
+  const updateRemainingTime = () => {
+    if (!blockedUntil) return;
+    
+    const timeLeft = blockedUntil - Date.now();
+    if (timeLeft <= 0) {
+      setRemainingTime({ minutes: 0, seconds: 0 });
+      return;
+    }
+    
+    const minutes = Math.floor(timeLeft / 60000);
+    const seconds = Math.floor((timeLeft % 60000) / 1000);
+    
+    setRemainingTime({ minutes, seconds });
+  };
 
   const handleChange = (event) => {
     const { name, value, checked } = event.target;
@@ -72,6 +118,11 @@ const SignIn = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
+    
+    // Si le compte est bloqué, empêcher la soumission
+    if (blockedUntil && blockedUntil > Date.now()) {
+      return;
+    }
     
     try {
       const response = await fetch('http://localhost:5001/api/auth/login', {
@@ -88,14 +139,37 @@ const SignIn = () => {
       const data = await response.json();
 
       if (!response.ok) {
+        // Gestion spécifique pour le cas de compte bloqué (status 429)
+        if (response.status === 429) {
+          setBlockedUntil(data.blockedUntil);
+          setRemainingAttempts(0);
+        } else if (data.remainingAttempts !== undefined) {
+          // Mettre à jour le nombre de tentatives restantes
+          setRemainingAttempts(data.remainingAttempts);
+        }
+        
         throw new Error(data.message || 'Failed to login');
       }
+
+      // Réinitialiser les tentatives après un login réussi
+      setRemainingAttempts(3);
+      setBlockedUntil(null);
 
       // Save token
       localStorage.setItem('token', data.token);
       
-      // Redirect to admin dashboard instead of /dashboard
-      navigate('/admin');
+      // Redirection basée sur le rôle de l'utilisateur
+      const userRole = data.user.role;
+      if (userRole === 'ADMIN') {
+        navigate('/admin');
+      } else if (userRole === 'STUDENT') {
+        navigate('/student');
+      } else if (userRole === 'TUTOR') {
+        navigate('/tutor');
+      } else {
+        // Default fallback
+        navigate('/admin');
+      }
       
     } catch (err) {
       setError(err.message);
@@ -103,11 +177,27 @@ const SignIn = () => {
     }
   };
 
+  const handleFaceLogin = () => {
+    setShowFaceLogin(true);
+  };
+
+  const handleCancelFaceLogin = () => {
+    setShowFaceLogin(false);
+  };
+
+  const handleFaceLoginSuccess = (data) => {
+    // Save token
+    localStorage.setItem('token', data.token);
+    
+    // Close the dialog
+    setShowFaceLogin(false);
+    
+    // Redirect to admin dashboard
+    navigate('/admin');
+  };
+
   const googleLogin = () => {
-    window.open(
-      "http://localhost:5001/auth/google",
-      "_self"
-    );
+    window.location.href = "http://localhost:5001/auth/google";
   };
 
   const githubLogin = () => {
@@ -139,6 +229,47 @@ const SignIn = () => {
             {error}
           </Alert>
         )}
+        {blockedUntil && blockedUntil > Date.now() && (
+          <Alert severity="warning" sx={{ mb: 2, width: '100%' }}>
+            <div>
+              <strong>Compte temporairement bloqué</strong>
+              <div>
+                Après 3 tentatives infructueuses, votre compte est bloqué pendant 2 minutes.
+              </div>
+              <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
+                  <div style={{ 
+                    display: 'inline-block', 
+                    padding: '5px 12px', 
+                    background: '#f3f3f3',
+                    borderRadius: '4px',
+                    fontFamily: 'monospace',
+                    fontWeight: 'bold',
+                    fontSize: '1.2rem',
+                    color: '#dd2825'
+                  }}>
+                    {remainingTime.minutes}:{remainingTime.seconds < 10 ? `0${remainingTime.seconds}` : remainingTime.seconds}
+                  </div>
+                </div>
+                <div>
+                  Réessayez après lexpiration du délai ou{' '}
+                  <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{ fontWeight: 'bold' }}>
+                    réinitialisez votre mot de passe
+                  </Link>.
+                </div>
+              </div>
+            </div>
+          </Alert>
+        )}
+        {!blockedUntil && remainingAttempts < 3 && remainingAttempts > 0 && (
+          <Alert severity="info" sx={{ mb: 2, width: '100%' }}>
+            {remainingAttempts === 1 ? (
+              <strong>Attention ! Dernière tentative avant blocage temporaire du compte.</strong>
+            ) : (
+              <div>Il vous reste {remainingAttempts} tentatives avant le blocage temporaire du compte.</div>
+            )}
+          </Alert>
+        )}
         <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
           <TextField
             margin="normal"
@@ -152,6 +283,7 @@ const SignIn = () => {
             value={formData.email}
             onChange={handleChange}
             sx={{ mb: 2 }}
+            disabled={blockedUntil && blockedUntil > Date.now()}
           />
           <TextField
             margin="normal"
@@ -165,6 +297,7 @@ const SignIn = () => {
             value={formData.password}
             onChange={handleChange}
             sx={{ mb: 2 }}
+            disabled={blockedUntil && blockedUntil > Date.now()}
           />
           <FormControlLabel
             control={
@@ -183,11 +316,8 @@ const SignIn = () => {
   fullWidth
   variant="contained"
   color="primary"
-  sx={{
-    //color: '#FFFFFF',  // This sets the text color to white
-    // or
-    color: 'white'     // This also works
-  }}
+  sx={{ mt: 2, mb: 2 }}
+  disabled={blockedUntil && blockedUntil > Date.now()}
 >
   Sign In
 </StyledButton>
@@ -197,6 +327,16 @@ const SignIn = () => {
               <Typography color="textSecondary">OR</Typography>
             </Divider>
           </Box>
+
+          <StyledButton
+            fullWidth
+            variant="outlined"
+            startIcon={<FaceIcon />}
+            onClick={handleFaceLogin}
+            sx={{ mb: 2 }}
+          >
+            Sign in with Face Recognition
+          </StyledButton>
 
           <StyledButton
             fullWidth
@@ -237,6 +377,19 @@ const SignIn = () => {
           </Box>
         </Box>
       </StyledPaper>
+
+      {/* Face Login Dialog */}
+      <Dialog 
+        open={showFaceLogin} 
+        onClose={handleCancelFaceLogin}
+        fullWidth
+        maxWidth="sm"
+      >
+        <FaceLogin 
+          onLogin={handleFaceLoginSuccess} 
+          onCancel={handleCancelFaceLogin} 
+        />
+      </Dialog>
     </Container>
   );
 };

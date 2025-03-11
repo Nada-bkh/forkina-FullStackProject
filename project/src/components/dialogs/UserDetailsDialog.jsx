@@ -9,7 +9,8 @@ import {
   Grid,
   Typography,
   Chip,
-  Box
+  Box,
+  Divider
 } from '@mui/material';
 
 const LabelValue = ({ label, value, chip }) => (
@@ -32,7 +33,7 @@ const LabelValue = ({ label, value, chip }) => (
 
 LabelValue.propTypes = {
   label: PropTypes.string.isRequired,
-  value: PropTypes.string,
+  value: PropTypes.any,
   chip: PropTypes.shape({
     color: PropTypes.string
   })
@@ -69,56 +70,66 @@ const UserDetailsDialog = ({ open, onClose, user }) => {
               </Typography>
             </Box>
           </Grid>
+          
+          <Grid item xs={12}>
+            <Divider sx={{ mb: 2 }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+              Informations de base
+            </Typography>
+          </Grid>
+          
           <Grid item xs={12} md={6}>
             <LabelValue label="Email" value={user.email} />
-            <LabelValue 
-              label="Role" 
-              value={user.userRole || 'N/A'} 
-              chip={{
-                color: getRoleColor(user.userRole)
-              }}
-            />
-            <LabelValue 
-              label="Account Status" 
-              value={user.accountStatus ? 'Active' : 'Inactive'} 
-              chip={{
-                color: user.accountStatus ? 'success' : 'error'
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <LabelValue 
-              label="Birth Date" 
-              value={user.birthDate ? new Date(user.birthDate).toLocaleDateString() : '-'} 
-            />
+            <LabelValue
+            label="Role" value={user.userRole} chip={{ color: getRoleColor(user.userRole) }} />
+            <LabelValue label="Account Status" value={user.accountStatus ? 'Active' : 'Inactive'} chip={{ color: user.accountStatus ? 'success' : 'error' }} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+            <LabelValue label="Birth Date" value={user.birthDate ? new Date(user.birthDate).toLocaleDateString() : 'Not provided'} />
             <LabelValue label="Department" value={user.department} />
+            </Grid>
+            
             {user.userRole === 'STUDENT' && (
-              <LabelValue label="Education Level" value={user.educationLevel} />
+            <>
+            <Grid item xs={12}>
+            <Divider sx={{ mb: 2 }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+            Academic Information
+            </Typography>
+            </Grid>
+            <Grid item xs={12} md={6}>
+            <LabelValue label="Education Level" value={user.educationLevel || 'BEGINNER'} chip={{
+            color: user.educationLevel === 'ADVANCED' ? 'success' :
+            user.educationLevel === 'INTERMEDIATE' ? 'primary' : 'default'
+            }} />
+            <LabelValue label="CIN" value={user.cin} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+            <LabelValue label="Class" value={user.classe?.name || 'Not assigned'} />
+            </Grid>
+            </>
             )}
-          </Grid>
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Close</Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
-
-UserDetailsDialog.propTypes = {
-  open: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  user: PropTypes.shape({
-    _id: PropTypes.number,
-    firstName: PropTypes.string,
-    lastName: PropTypes.string,
-    email: PropTypes.string,
-    userRole: PropTypes.string,
-    accountStatus: PropTypes.bool,
-    birthDate: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
-    educationLevel: PropTypes.string,
-    department: PropTypes.string
-  })
-};
-
-export default UserDetailsDialog;
+            
+            <Grid item xs={12}> <Divider sx={{ mb: 2 }} /> <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}> Account Information </Typography> </Grid> <Grid item xs={12} md={6}> <LabelValue label="Created At" value={user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'} /> <LabelValue label="Last Login" value={user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'} /> </Grid> <Grid item xs={12} md={6}> <LabelValue label="Email Verified" value={user.isEmailVerified ? 'Verified' : 'Not verified'} chip={{ color: user.isEmailVerified ? 'success' : 'warning' }} /> </Grid> </Grid> </DialogContent> <DialogActions> <Button onClick={onClose}>Close</Button> </DialogActions> </Dialog> ); };
+            UserDetailsDialog.propTypes = {
+            open: PropTypes.bool.isRequired,
+            onClose: PropTypes.func.isRequired,
+            user: PropTypes.shape({
+            _id: PropTypes.string,
+            firstName: PropTypes.string,
+            lastName: PropTypes.string,
+            email: PropTypes.string,
+            userRole: PropTypes.string,
+            accountStatus: PropTypes.bool,
+            birthDate: PropTypes.string,
+            educationLevel: PropTypes.string,
+            department: PropTypes.string,
+            cin: PropTypes.string,
+            classe: PropTypes.any,
+            createdAt: PropTypes.string,
+            lastLogin: PropTypes.string,
+            isEmailVerified: PropTypes.bool
+            })
+            };
+            
+            export default UserDetailsDialog;

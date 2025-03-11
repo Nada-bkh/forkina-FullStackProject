@@ -29,7 +29,7 @@ module.exports = function (passport) {
                         githubId: profile.id,
                         firstName,
                         lastName,
-                        email: profile.emails?.[0]?.value || 'no-email@github.com',
+                        email: profile.emails?.[0]?.value,
                         avatar: profile.photos?.[0]?.value || '',
                         isGithubUser: true
                     });

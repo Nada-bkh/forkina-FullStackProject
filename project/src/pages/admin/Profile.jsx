@@ -16,7 +16,7 @@ import {
 import { styled } from '@mui/material/styles';
 import { Person as PersonIcon } from '@mui/icons-material';
 import EditProfileDialog from '../../components/dialogs/EditProfileDialog';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -27,7 +27,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 }));
 
 const Profile = () => {
-  const [user, setUser] = useState(null);
+  const { user, updateUser } = useOutletContext();
   const [error, setError] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ const Profile = () => {
 
       const data = await response.json();
       console.log('Profile data received:', data);
-      setUser(data);
+      updateUser(data);
     } catch (err) {
       console.error('Profile fetch error:', err);
       setError(err.message);
@@ -96,7 +96,7 @@ const Profile = () => {
   };
 
   const handleProfileUpdate = (updatedUser) => {
-    setUser(updatedUser);
+    updateUser(updatedUser);
   };
 
   if (loading) {
@@ -124,14 +124,13 @@ const Profile = () => {
         <Grid item xs={12} md={4}>
           <StyledPaper>
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-              {user.profilePicture ? (
+              {user.profilePicture || user.faceImage ? (
                 <Avatar 
-                  src={user.profilePicture} 
+                  src={`http://localhost:5001${user.profilePicture || user.faceImage}`}
                   sx={{ width: 120, height: 120, mb: 2 }}
                 />
               ) : (
                 <Avatar 
-                  src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
                   sx={{ 
                     width: 120, 
                     height: 120, 
@@ -194,7 +193,29 @@ const Profile = () => {
                 />
               </ListItem>
               <Divider />
-              
+
+              {user.userRole === 'STUDENT' && (
+                <>
+                  <ListItem>
+                    <ListItemText 
+                      primary="CIN" 
+                      secondary={user.cin || 'Non renseigné'} 
+                      primaryTypographyProps={{ color: 'textSecondary' }}
+                    />
+                  </ListItem>
+                  <Divider />
+                  
+                  <ListItem>
+                    <ListItemText 
+                      primary="Classe" 
+                      secondary={user.classe || '--'} 
+                      primaryTypographyProps={{ color: 'textSecondary' }}
+                    />
+                  </ListItem>
+                  <Divider />
+                </>
+              )}
+
               <ListItem>
                 <ListItemText 
                   primary="Role" 

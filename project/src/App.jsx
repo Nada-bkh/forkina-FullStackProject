@@ -15,6 +15,8 @@ import ResetPassword from "./pages/reserPassword";
 import SubmitTask from "./pages/admin/SubmitTask"; 
 import Profile from "./pages/admin/Profile";
 import StudentDashboard from "./pages/student/Dashboard";
+
+import TeamManagement from "./pages/student/TeamManagement";
 import TutorDashboard from "./pages/tutor/Dashboard";
 import AuthTransfer from "./pages/AuthTransfer";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -33,7 +35,8 @@ import StudentTaskDetails from "./pages/student/TaskDetails";
 import StudentsList from './pages/tutor/StudentsList';
 import ClassesList from './pages/tutor/ClassesList'; // New import pages/tutor/ClassesList
 import ClassDetails from './pages/tutor/components/ClassDetails'; // New import
-import ClassesManagement from './pages/admin/ClassesManagement'; // New import
+import ClassesManagement from './pages/admin/ClassesManagement';
+import TeamsList from "./pages/tutor/TeamsList.jsx"; // New import
 
 const theme = createTheme({
   palette: {
@@ -102,39 +105,38 @@ const App = () => (
               <Route path="classes" element={<ClassesManagement />} /> {/* New route */}
             </Route>
 
-            {/* Student Dashboard Routes */}
             <Route path="/student" element={<StudentDashboardLayout />}>
-              <Route index element={<StudentDashboard />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="projects" element={<StudentProjectsList />} />
-              <Route path="projects/:projectId" element={<StudentProjectDetails />} />
-              <Route path="projects/:projectId/tasks" element={<StudentTasksList />} />
-              <Route path="projects/:projectId/tasks/:taskId" element={<StudentTaskDetails />} />
-              <Route path="tasks" element={<StudentTasksList />} />
-              <Route path="tasks/:taskId" element={<StudentTaskDetails />} />
-              <Route path="team" element={<div>Team Page</div>} />
-            </Route>
+  <Route index element={<StudentDashboard />} />
+  <Route path="profile" element={<Profile />} />
+  <Route path="projects" element={<StudentProjectsList />} />
+  <Route path="projects/:projectId" element={<StudentProjectDetails />} />
+  <Route path="projects/:projectId/tasks" element={<StudentTasksList />} />
+  <Route path="projects/:projectId/tasks/:taskId" element={<StudentTaskDetails />} />
+  <Route path="tasks" element={<StudentTasksList />} />
+  <Route path="tasks/:taskId" element={<StudentTaskDetails />} />
+  <Route path="team" element={<TeamManagement />} /> {/* Updated */}
+</Route>
 
             {/* Tutor Dashboard Routes */}
             <Route path="/tutor" element={<TutorDashboardLayout />}>
-              <Route index element={<TutorDashboard />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="students" element={<StudentsList />} />
-              <Route path="evaluations" element={<div>Evaluations Page</div>} />
-              <Route path="projects" element={<ProjectsList />} />
-              <Route path="projects/create" element={<ProjectCreate />} />
-              <Route path="projects/:projectId" element={<ProjectDetails />} />
-              <Route path="projects/:projectId/edit" element={<ProjectEdit />} />
-              <Route path="projects/:projectId/tasks" element={<TasksList />} />
-              <Route path="projects/:projectId/tasks/create" element={<TaskCreate />} />
-              <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetails />} />
-              
-              <Route path="projects/:projectId/tasks/:taskId/edit" element={<TaskEdit />} />
-              <Route path="classes" element={<ClassesList />} /> {/* New route */}
-              <Route path="classes/:classId" element={<ClassDetails />} /> {/* New route */}
-              <Route path="assignments" element={<div>Assignments Page</div>} /> {/* New route */}
-              <Route path="groups" element={<div>Groups Page</div>} /> {/* New route */}
-            </Route>
+  <Route index element={<TutorDashboard />} />
+  <Route path="profile" element={<Profile />} />
+  <Route path="students" element={<StudentsList />} />
+  <Route path="evaluations" element={<div>Evaluations Page</div>} />
+  <Route path="projects" element={<ProjectsList />} />
+  <Route path="projects/create" element={<ProjectCreate />} />
+  <Route path="projects/:projectId" element={<ProjectDetails />} />
+  <Route path="projects/:projectId/edit" element={<ProjectEdit />} />
+  <Route path="projects/:projectId/tasks" element={<TasksList />} />
+  <Route path="projects/:projectId/tasks/create" element={<TaskCreate />} />
+  <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetails />} />
+  <Route path="projects/:projectId/tasks/:taskId/edit" element={<TaskEdit />} />
+  <Route path="classes" element={<ClassesList />} />
+  <Route path="classes/:classId" element={<ClassDetails />} />
+  <Route path="teams" element={<TeamsList />} /> {/* New route */}
+  <Route path="assignments" element={<div>Assignments Page</div>} />
+  <Route path="groups" element={<div>Groups Page</div>} />
+</Route>
 
             <Route path="*" element={<NotFound />} />
           </Routes>

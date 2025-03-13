@@ -50,7 +50,7 @@ passport.use(
         lastName: profile.name?.familyName
       });
 
-      // Check if the user already exists by email
+      // Check if user exists by email
       let user = await User.findOne({ email: profile.emails[0].value });
       console.log('Existing user:', user);
 
@@ -58,19 +58,28 @@ passport.use(
         // If user exists but does not have Google ID, update it
         if (!user.googleId) {
           user.googleId = profile.id;
+          user.isGoogleUser = true;
           await user.save();
         }
         return done(null, user);
       }
 
-      // If no user exists, create a new one
+      // Generate a temporary CIN for Google users
+      const tempCin = 'G' + Date.now().toString().slice(-7);
+
+      // If no user exists, create a new one with STUDENT role
       const userData = {
         googleId: profile.id,
         firstName: profile.name?.givenName || profile.displayName.split(' ')[0],
         lastName: profile.name?.familyName || profile.displayName.split(' ')[1] || '',
         email: profile.emails[0].value,
         avatar: profile.photos?.[0]?.value,
-        isGoogleUser: true
+        isGoogleUser: true,
+        userRole: 'STUDENT',
+        accountStatus: true,
+        isEmailVerified: true,
+        cin: tempCin, // Add temporary CIN
+        classe: '--' // Default class
       };
 
       console.log('Creating new user with data:', userData);
@@ -109,13 +118,21 @@ passport.use(
         const firstName = profile.displayName ? profile.displayName.split(' ')[0] : profile.username;
         const lastName = profile.displayName ? profile.displayName.split(' ').slice(1).join(' ') : 'User';
 
+        // Generate a temporary CIN for GitHub users
+        const tempCin = 'GH' + Date.now().toString().slice(-7);
+
         const userData = {
           githubId: profile.id,
           firstName: firstName,
-          lastName: lastName || 'User',  // ✅ Ensuring lastName is not empty
+          lastName: lastName || 'User',
           email: profile.emails?.[0]?.value || `${profile.username}@github.com`,
           avatar: profile.photos?.[0]?.value,
-          isGithubUser: true
+          isGithubUser: true,
+          userRole: 'STUDENT',
+          accountStatus: true,
+          isEmailVerified: true,
+          cin: tempCin,
+          classe: '--'
         };
         console.log('Creating new user with data:', userData);
         

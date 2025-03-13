@@ -42,22 +42,23 @@ router.get(
           { 
             id: user._id.toString(),
             email: user.email,
-            role: user.userRole 
+            role: user.userRole || 'STUDENT' // Ensure role is set, default to STUDENT
           },
           process.env.JWT_SECRET || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMzQ1NiIsInJvbGUiOiJTVFVERU5UIiwiaWF0IjoxNzQwMTM1NjEyLCJleHAiOjE3NDA3NDA0MTJ9.zUhKAi8PO7X8IAfPcbGw2j2LhdtuLBW6ww2E0VuthXU",
           { expiresIn: '7d' }
         );
 
-        // Set token in cookie
-        res.cookie('auth_token', token, {
-          httpOnly: false, // Allow JavaScript access
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        // Log token and user data for debugging
+        console.log('Generated token:', token);
+        console.log('User data:', {
+          id: user._id,
+          email: user.email,
+          role: user.userRole,
+          isGoogleUser: user.isGoogleUser
         });
 
-        // Redirect to a transfer page
-        res.redirect(`${CLIENT_URL}/auth-transfer`);
+        // Redirect with token and role
+        res.redirect(`${CLIENT_URL}/auth-transfer?token=${token}&role=${user.userRole || 'STUDENT'}`);
       } catch (error) {
         console.error('Token/login error:', error);
         return res.redirect(FAILURE_URL);
@@ -98,7 +99,8 @@ router.get(
           httpOnly: false,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
-          maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+          path: '/' // Ensure the cookie is available on all paths
         });
 
         // Log the user in

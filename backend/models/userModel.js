@@ -13,6 +13,12 @@ const UserRole = {
 const userSchema = new Schema(
   {
     firstName: { type: String, required: true },
+    // Reference to Class model instead of a string
+    classe: { 
+      type: Schema.Types.ObjectId,
+      ref: 'Class',
+      default: null // Default to null if not assigned to a class
+    },
     lastName: { type: String, required: true },
     email: { 
       type: String, 
@@ -26,6 +32,21 @@ const userSchema = new Schema(
       required: function() {
         return !this.isGoogleUser && !this.isGithubUser; // Password not required for OAuth users
       }
+    },
+    // CIN - Carte d'Identité Nationale
+    cin: { 
+      type: String,
+      trim: true,
+      sparse: true,
+      // Required only for students
+      required: function() {
+        return this.userRole === UserRole.STUDENT;
+      }
+    },
+    // Classe de l'étudiant
+    classe: { 
+      type: String,
+      default: "--" // Par défaut, pas encore affecté
     },
     educationLevel: {
       type: String,
@@ -47,6 +68,8 @@ const userSchema = new Schema(
       default: null
     },
     profilePicture: { type: String },
+    faceImage: { type: String }, // Stored path to the face image
+    faceDescriptor: { type: [Number] }, // Face descriptor as an array of numbers
     lastLogin: { type: Date },
     loginCount: { type: Number, default: 0 },
     googleId: {
@@ -106,6 +129,7 @@ userSchema.methods.generateToken = function() {
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.faceDescriptor; // Don't expose face descriptor in API responses
   return obj;
 };
 

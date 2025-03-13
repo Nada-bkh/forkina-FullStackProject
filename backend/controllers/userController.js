@@ -1,3 +1,4 @@
+
 // controllers/userController.js
 const User = require('../models/userModel');
 
@@ -44,9 +45,17 @@ exports.updateUser = async (req, res) => {
     console.log('Updating user with ID:', req.params.id);
     console.log('Update data:', req.body);
 
+    const updateData = { ...req.body };
+    
+    // Process special fields as needed
+    if (updateData.userRole) {
+      console.log('Updating user role to:', updateData.userRole);
+    }
+
+    // Use $set to update only the fields provided
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { $set: req.body },
+      { $set: updateData },
       { new: true, runValidators: true }
     );
 

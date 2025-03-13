@@ -20,6 +20,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
+import { fetchClasses } from '../../api/classApi';
 
 const UserEditDialog = ({ open, onClose, user, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -30,17 +31,33 @@ const UserEditDialog = ({ open, onClose, user, onSubmit }) => {
     accountStatus: true,
     birthDate: null,
     educationLevel: 'BEGINNER',
-    department: ''
+    department: '',
+    cin: '',
+    classe: null
   });
+  const [classes, setClasses] = useState([]);
 
   useEffect(() => {
     if (user) {
       setFormData({
         ...user,
-        birthDate: user.birthDate ? dayjs(user.birthDate) : null
+        birthDate: user.birthDate ? dayjs(user.birthDate) : null,
+        classe: user.classe?._id || null
       });
     }
   }, [user]);
+
+  useEffect(() => {
+    const fetchAllClasses = async () => {
+      try {
+        const data = await fetchClasses();
+        setClasses(data);
+      } catch (err) {
+        console.error('Error fetching classes:', err);
+      }
+    };
+    fetchAllClasses();
+  }, []);
 
   const handleChange = (event) => {
     const { name, value, checked } = event.target;
@@ -62,7 +79,7 @@ const UserEditDialog = ({ open, onClose, user, onSubmit }) => {
     const submitData = {
       ...formData,
       birthDate: formData.birthDate ? formData.birthDate.format('YYYY-MM-DD') : null,
-      _id: user._id // Assurez-vous d'inclure l'ID pour l'update
+      _id: user._id
     };
     onSubmit(submitData);
   };
@@ -134,21 +151,53 @@ const UserEditDialog = ({ open, onClose, user, onSubmit }) => {
               </LocalizationProvider>
             </Grid>
             {formData.userRole === 'STUDENT' && (
-              <Grid item xs={12}>
-                <FormControl fullWidth required>
-                  <InputLabel>Education Level</InputLabel>
-                  <Select
-                    name="educationLevel"
-                    value={formData.educationLevel}
+              <>
+                <Grid item xs={12}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Education Level</InputLabel>
+                    <Select
+                      name="educationLevel"
+                      value={formData.educationLevel}
+                      onChange={handleChange}
+                      label="Education Level"
+                    >
+                      <MenuItem value="BEGINNER">Beginner</MenuItem>
+                      <MenuItem value="INTERMEDIATE">Intermediate</MenuItem>
+                      <MenuItem value="ADVANCED">Advanced</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    fullWidth
+                    required
+                    name="cin"
+                    label="CIN (Carte d'Identité Nationale)"
+                    value={formData.cin || ''}
                     onChange={handleChange}
-                    label="Education Level"
-                  >
-                    <MenuItem value="BEGINNER">Beginner</MenuItem>
-                    <MenuItem value="INTERMEDIATE">Intermediate</MenuItem>
-                    <MenuItem value="ADVANCED">Advanced</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
+                    inputProps={{ maxLength: 8 }}
+                    helperText="Numéro d'identité nationale de l'étudiant"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Class</InputLabel>
+                    <Select
+                      name="classe"
+                      value={formData.classe || ''}
+                      onChange={handleChange}
+                      label="Class"
+                    >
+                      <MenuItem value="">Not Assigned</MenuItem>
+                      {classes.map(classItem => (
+                        <MenuItem key={classItem._id} value={classItem._id}>
+                          {classItem.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </>
             )}
             <Grid item xs={12}>
               <TextField
@@ -197,7 +246,9 @@ UserEditDialog.propTypes = {
     accountStatus: PropTypes.bool,
     birthDate: PropTypes.string,
     educationLevel: PropTypes.string,
-    department: PropTypes.string
+    department: PropTypes.string,
+    cin: PropTypes.string,
+    classe: PropTypes.any
   })
 };
 

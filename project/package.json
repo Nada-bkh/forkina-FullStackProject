@@ -10,19 +10,23 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@emotion/react": "^11.11.3",
-    "@emotion/styled": "^11.11.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^5.16.14",
-    "@mui/material": "^5.15.11",
-    "@mui/x-date-pickers": "^6.19.5",
+    "@mui/material": "^5.16.14",
+    "@mui/x-date-pickers": "^6.20.2",
     "@react-oauth/google": "^0.12.1",
     "@tanstack/react-query": "^5.22.2",
-    "axios": "^1.7.9",
-    "dayjs": "^1.11.10",
+    "axios": "^1.8.2",
+    "dayjs": "^1.11.13",
+    "dotenv": "^16.4.7",
+    "face-api.js": "^0.22.2",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
+    "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.1"
+    "react-router-dom": "^6.30.0",
+    "sweetalert2": "^11.17.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",

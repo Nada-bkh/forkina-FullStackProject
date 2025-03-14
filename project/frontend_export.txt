@@ -1,6 +1,6 @@
 REACT FRONTEND EXPORT
-Date: 2025-03-10T02:25:52.139Z
-Project Structure: C:\Users\Admin\OneDrive\forkina-FullStackProject-main\project
+Date: 2025-03-12T21:42:43.692Z
+Project Structure: C:\forkina-FullStackProject-main(ROD_BELEK)\forkina-FullStackProject-main\project
 ================================================================================
 
 
@@ -62,11 +62,121 @@ api.interceptors.response.use(
 );
 
 
+================================================================================
+FILE: src\api\classApi.js
+================================================================================
 
+// src/api/classApi.js
+import { api } from './axiosConfig';
 
+// Fetch all classes (for admin or tutor)
+export const fetchClasses = async () => {
+  try {
+    const response = await api.get('/classes');
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch classes');
+  }
+};
+
+// Fetch a specific class by ID
+export const fetchClassById = async (classId) => {
+  try {
+    const response = await api.get(`/classes/${classId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch class');
+  }
+};
+
+// Create a new class (Admin only)
+export const createClass = async (classData) => {
+  try {
+    const response = await api.post('/classes', classData);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to create class');
+  }
+};
+
+// Update a class (Admin only)
+export const updateClass = async (classId, classData) => {
+  try {
+    const response = await api.put(`/classes/${classId}`, classData);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to update class');
+  }
+};
+
+// Delete a class (Admin only)
+export const deleteClass = async (classId) => {
+  try {
+    const response = await api.delete(`/classes/${classId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to delete class');
+  }
+};
+
+// Add students to a class (Admin only)
+export const addStudentsToClass = async (classId, studentIds) => {
+  try {
+    const response = await api.post('/classes/add-students', { classId, studentIds });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to add students to class');
+  }
+};
+
+// Fetch all students for a tutor (across all their classes)
+export const fetchStudentsForTutor = async () => {
+  try {
+    const response = await api.get('/classes/tutor/students');
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch students');
+  }
+};
+
+================================================================================
+FILE: src\api\taskApi.js
+================================================================================
+
+import { api } from './axiosConfig';
+
+export const fetchTutorTasks = async () => {
+  try {
+    const response = await api.get('/tutor/tasks');
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || error.response?.statusText || 'Failed to fetch tutor tasks');
+  }
+};
+
+export const fetchTasksByProject = async (projectId) => {
+  try {
+    const response = await api.get(`/tasks/project/${projectId}/tasks`);
+    return response.data;
+  } catch (error) {
+    const status = error.response?.status;
+    const message = error.response?.data?.error || error.response?.data?.details || error.response?.statusText || 'Failed to fetch tasks';
+    throw new Error(`${message} (Status: ${status || 'unknown'})`);
+  }
+};
+
+export const updateTaskStatus = async (taskId, newStatus) => {
+  try {
+    await api.put(`/tasks/${taskId}`, { status: newStatus });
+  } catch (error) {
+    throw new Error(error.response?.data?.error || 'Failed to update task status');
+  }
+};
 ================================================================================
 FILE: src\api\userApi.js
 ================================================================================
+
+
 
 // src/api/userApi.js
 import { api } from './axiosConfig';
@@ -115,6 +225,7 @@ export const deleteUser = async (userId) => {
 FILE: src\components\dialogs\DeleteConfirmDialog.jsx
 ================================================================================
 
+
 // src/components/dialogs/DeleteConfirmDialog.jsx
 //delete user
 import PropTypes from 'prop-types';
@@ -157,6 +268,7 @@ export default DeleteConfirmDialog;
 ================================================================================
 FILE: src\components\dialogs\EditProfileDialog.jsx
 ================================================================================
+
 
 import { useState, useEffect } from 'react';
 import {
@@ -524,7 +636,7 @@ const LabelValue = ({ label, value, chip }) => (
 
 LabelValue.propTypes = {
   label: PropTypes.string.isRequired,
-  value: PropTypes.string,
+  value: PropTypes.any,
   chip: PropTypes.shape({
     color: PropTypes.string
   })
@@ -571,102 +683,59 @@ const UserDetailsDialog = ({ open, onClose, user }) => {
           
           <Grid item xs={12} md={6}>
             <LabelValue label="Email" value={user.email} />
-            <LabelValue 
-              label="Role" 
-              value={user.userRole || 'N/A'} 
-              chip={{
-                color: getRoleColor(user.userRole)
-              }}
-            />
-            <LabelValue 
-              label="Account Status" 
-              value={user.accountStatus ? 'Active' : 'Inactive'} 
-              chip={{
-                color: user.accountStatus ? 'success' : 'error'
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <LabelValue 
-              label="Birth Date" 
-              value={user.birthDate ? new Date(user.birthDate).toLocaleDateString() : '-'} 
-            />
+            <LabelValue
+            label="Role" value={user.userRole} chip={{ color: getRoleColor(user.userRole) }} />
+            <LabelValue label="Account Status" value={user.accountStatus ? 'Active' : 'Inactive'} chip={{ color: user.accountStatus ? 'success' : 'error' }} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+            <LabelValue label="Birth Date" value={user.birthDate ? new Date(user.birthDate).toLocaleDateString() : 'Not provided'} />
             <LabelValue label="Department" value={user.department} />
+            </Grid>
+            
             {user.userRole === 'STUDENT' && (
-              <LabelValue label="Education Level" value={user.educationLevel} />
-            )}
-          </Grid>
-          
-          {user.userRole === 'STUDENT' && (
             <>
-        
-              <Grid item xs={12} md={6}>
-                <LabelValue 
-                  label="CIN" 
-                  value={user.cin || 'Non renseigné'} 
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <LabelValue 
-                  label="Classe" 
-                  value={user.classe === '--' ? 'Non affecté' : user.classe || 'Non affecté'} 
-                  chip={user.classe === '--' ? { color: 'warning' } : null}
-                />
-              </Grid>
+            <Grid item xs={12}>
+            <Divider sx={{ mb: 2 }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+            Academic Information
+            </Typography>
+            </Grid>
+            <Grid item xs={12} md={6}>
+            <LabelValue label="Education Level" value={user.educationLevel || 'BEGINNER'} chip={{
+            color: user.educationLevel === 'ADVANCED' ? 'success' :
+            user.educationLevel === 'INTERMEDIATE' ? 'primary' : 'default'
+            }} />
+            <LabelValue label="CIN" value={user.cin} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+            <LabelValue label="Class" value={user.classe?.name || 'Not assigned'} />
+            </Grid>
             </>
-          )}
-          
-          {user.isGoogleUser && (
-            <Grid item xs={12}>
-              <Chip 
-                label="Google Account" 
-                color="info" 
-                size="small" 
-                sx={{ mt: 1 }}
-              />
-            </Grid>
-          )}
-          
-          {user.isGithubUser && (
-            <Grid item xs={12}>
-              <Chip 
-                label="GitHub Account" 
-                color="default" 
-                size="small" 
-                sx={{ mt: 1 }}
-              />
-            </Grid>
-          )}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Close</Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
-
-UserDetailsDialog.propTypes = {
-  open: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  user: PropTypes.shape({
-    _id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-    firstName: PropTypes.string,
-    lastName: PropTypes.string,
-    email: PropTypes.string,
-    userRole: PropTypes.string,
-    accountStatus: PropTypes.bool,
-    birthDate: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
-    educationLevel: PropTypes.string,
-    department: PropTypes.string,
-    cin: PropTypes.string,
-    classe: PropTypes.string,
-    isGoogleUser: PropTypes.bool,
-    isGithubUser: PropTypes.bool
-  })
-};
-
-export default UserDetailsDialog;
+            )}
+            
+            <Grid item xs={12}> <Divider sx={{ mb: 2 }} /> <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}> Account Information </Typography> </Grid> <Grid item xs={12} md={6}> <LabelValue label="Created At" value={user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'} /> <LabelValue label="Last Login" value={user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'} /> </Grid> <Grid item xs={12} md={6}> <LabelValue label="Email Verified" value={user.isEmailVerified ? 'Verified' : 'Not verified'} chip={{ color: user.isEmailVerified ? 'success' : 'warning' }} /> </Grid> </Grid> </DialogContent> <DialogActions> <Button onClick={onClose}>Close</Button> </DialogActions> </Dialog> ); };
+            UserDetailsDialog.propTypes = {
+            open: PropTypes.bool.isRequired,
+            onClose: PropTypes.func.isRequired,
+            user: PropTypes.shape({
+            _id: PropTypes.string,
+            firstName: PropTypes.string,
+            lastName: PropTypes.string,
+            email: PropTypes.string,
+            userRole: PropTypes.string,
+            accountStatus: PropTypes.bool,
+            birthDate: PropTypes.string,
+            educationLevel: PropTypes.string,
+            department: PropTypes.string,
+            cin: PropTypes.string,
+            classe: PropTypes.any,
+            createdAt: PropTypes.string,
+            lastLogin: PropTypes.string,
+            isEmailVerified: PropTypes.bool
+            })
+            };
+            
+            export default UserDetailsDialog;
 ================================================================================
 FILE: src\components\dialogs\UserEditDialog.jsx
 ================================================================================
@@ -693,6 +762,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
+import { fetchClasses } from '../../api/classApi';
 
 const UserEditDialog = ({ open, onClose, user, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -705,26 +775,34 @@ const UserEditDialog = ({ open, onClose, user, onSubmit }) => {
     educationLevel: 'BEGINNER',
     department: '',
     cin: '',
-    classe: '--'
+    classe: null
   });
+  const [classes, setClasses] = useState([]);
 
   useEffect(() => {
     if (user) {
       setFormData({
         ...user,
-        birthDate: user.birthDate ? dayjs(user.birthDate) : null
+        birthDate: user.birthDate ? dayjs(user.birthDate) : null,
+        classe: user.classe?._id || null
       });
     }
   }, [user]);
 
+  useEffect(() => {
+    const fetchAllClasses = async () => {
+      try {
+        const data = await fetchClasses();
+        setClasses(data);
+      } catch (err) {
+        console.error('Error fetching classes:', err);
+      }
+    };
+    fetchAllClasses();
+  }, []);
+
   const handleChange = (event) => {
     const { name, value, checked } = event.target;
-    
-    // Special debugging for role change
-    if (name === 'userRole') {
-      console.log('Role changed to:', value);
-    }
-    
     setFormData(prev => ({
       ...prev,
       [name]: name === 'accountStatus' ? checked : value
@@ -743,12 +821,8 @@ const UserEditDialog = ({ open, onClose, user, onSubmit }) => {
     const submitData = {
       ...formData,
       birthDate: formData.birthDate ? formData.birthDate.format('YYYY-MM-DD') : null,
-      _id: user._id // Assurez-vous d'inclure l'ID pour l'update
+      _id: user._id
     };
-    
-    // Debug log to check form data
-    console.log('Submitting user data:', submitData);
-    
     onSubmit(submitData);
   };
 
@@ -848,14 +922,22 @@ const UserEditDialog = ({ open, onClose, user, onSubmit }) => {
                   />
                 </Grid>
                 <Grid item xs={6}>
-                  <TextField
-                    fullWidth
-                    name="classe"
-                    label="Classe"
-                    value={formData.classe || '--'}
-                    onChange={handleChange}
-                    helperText="Classe attribuée à l'étudiant"
-                  />
+                  <FormControl fullWidth>
+                    <InputLabel>Class</InputLabel>
+                    <Select
+                      name="classe"
+                      value={formData.classe || ''}
+                      onChange={handleChange}
+                      label="Class"
+                    >
+                      <MenuItem value="">Not Assigned</MenuItem>
+                      {classes.map(classItem => (
+                        <MenuItem key={classItem._id} value={classItem._id}>
+                          {classItem.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
               </>
             )}
@@ -906,7 +988,9 @@ UserEditDialog.propTypes = {
     accountStatus: PropTypes.bool,
     birthDate: PropTypes.string,
     educationLevel: PropTypes.string,
-    department: PropTypes.string
+    department: PropTypes.string,
+    cin: PropTypes.string,
+    classe: PropTypes.any
   })
 };
 
@@ -936,195 +1020,229 @@ import {
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { fetchClasses } from '../../api/classApi';
+
 const UserFormDialog = ({ open, onClose, user, onSubmit, mode = 'create' }) => {
-    const [formData, setFormData] = useState({
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      userRole: 'STUDENT',
-      accountStatus: true,
-      birthDate: null,
-      educationLevel: 'BEGINNER',
-      department: '',
-      cin: '',
-      classe: '--'
-    });
-  
-    useEffect(() => {
-      if (user && mode === 'edit') {
-        setFormData({
-          ...user,
-          password: '' // Don't populate password in edit mode
-        });
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    userRole: 'STUDENT',
+    accountStatus: true,
+    birthDate: null,
+    educationLevel: 'BEGINNER',
+    department: '',
+    cin: '',
+    classe: null
+  });
+  const [classes, setClasses] = useState([]);
+
+  useEffect(() => {
+    if (user && mode === 'edit') {
+      setFormData({
+        ...user,
+        password: '',
+        classe: user.classe?._id || null
+      });
+    }
+  }, [user, mode]);
+
+  useEffect(() => {
+    const fetchAllClasses = async () => {
+      try {
+        const data = await fetchClasses();
+        setClasses(data);
+      } catch (err) {
+        console.error('Error fetching classes:', err);
       }
-    }, [user, mode]);
-  
-    const handleChange = (event) => {
-      const { name, value, checked } = event.target;
-      setFormData(prev => ({
-        ...prev,
-        [name]: name === 'accountStatus' ? checked : value
-      }));
     };
-  
-    const handleDateChange = (date) => {
-      setFormData(prev => ({
-        ...prev,
-        birthDate: date
-      }));
-    };
-  
-    const handleSubmit = (e) => {
-      e.preventDefault();
-      onSubmit(formData);
-    };
-  
-    return (
-      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {mode === 'create' ? 'Add New User' : 'Edit User'}
-        </DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <TextField
-                  required
-                  fullWidth
-                  name="firstName"
-                  label="First Name"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  required
-                  fullWidth
-                  name="lastName"
-                  label="Last Name"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                />
-              </Grid>
+    fetchAllClasses();
+  }, []);
+
+  const handleChange = (event) => {
+    const { name, value, checked } = event.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'accountStatus' ? checked : value
+    }));
+  };
+
+  const handleDateChange = (date) => {
+    setFormData(prev => ({
+      ...prev,
+      birthDate: date
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        {mode === 'create' ? 'Add New User' : 'Edit User'}
+      </DialogTitle>
+      <form onSubmit={handleSubmit}>
+        <DialogContent>
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <TextField
+                required
+                fullWidth
+                name="firstName"
+                label="First Name"
+                value={formData.firstName}
+                onChange={handleChange}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                required
+                fullWidth
+                name="lastName"
+                label="Last Name"
+                value={formData.lastName}
+                onChange={handleChange}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                required
+                fullWidth
+                name="email"
+                label="Email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+              />
+            </Grid>
+            {mode === 'create' && (
               <Grid item xs={12}>
                 <TextField
                   required
                   fullWidth
-                  name="email"
-                  label="Email"
-                  type="email"
-                  value={formData.email}
+                  name="password"
+                  label="Password"
+                  type="password"
+                  value={formData.password}
                   onChange={handleChange}
                 />
               </Grid>
-              {mode === 'create' && (
+            )}
+            <Grid item xs={6}>
+              <FormControl fullWidth required>
+                <InputLabel>Role</InputLabel>
+                <Select
+                  name="userRole"
+                  value={formData.userRole}
+                  onChange={handleChange}
+                  label="Role"
+                >
+                  <MenuItem value="STUDENT">Student</MenuItem>
+                  <MenuItem value="TUTOR">Tutor</MenuItem>
+                  <MenuItem value="ADMIN">Admin</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={6}>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Birth Date"
+                  value={formData.birthDate}
+                  onChange={handleDateChange}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                    },
+                  }}
+                />
+              </LocalizationProvider>
+            </Grid>
+            {formData.userRole === 'STUDENT' && (
+              <>
+                <Grid item xs={12}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Education Level</InputLabel>
+                    <Select
+                      name="educationLevel"
+                      value={formData.educationLevel}
+                      onChange={handleChange}
+                      label="Education Level"
+                    >
+                      <MenuItem value="BEGINNER">Beginner</MenuItem>
+                      <MenuItem value="INTERMEDIATE">Intermediate</MenuItem>
+                      <MenuItem value="ADVANCED">Advanced</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
                 <Grid item xs={12}>
                   <TextField
                     required
                     fullWidth
-                    name="password"
-                    label="Password"
-                    type="password"
-                    value={formData.password}
+                    name="cin"
+                    label="CIN (Carte d'Identité Nationale)"
+                    value={formData.cin}
                     onChange={handleChange}
+                    inputProps={{ maxLength: 8 }}
+                    helperText="Numéro d'identité nationale (obligatoire pour les étudiants)"
                   />
                 </Grid>
-              )}
-              <Grid item xs={6}>
-                <FormControl fullWidth required>
-                  <InputLabel>Role</InputLabel>
-                  <Select
-                    name="userRole"
-                    value={formData.userRole}
-                    onChange={handleChange}
-                    label="Role"
-                  >
-                    <MenuItem value="STUDENT">Student</MenuItem>
-                    <MenuItem value="TUTOR">Tutor</MenuItem>
-                    <MenuItem value="ADMIN">Admin</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={6}>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    label="Birth Date"
-                    value={formData.birthDate}
-                    onChange={handleDateChange}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                      },
-                    }}
-                  />
-                </LocalizationProvider>
-              </Grid>
-              {formData.userRole === 'STUDENT' && (
-                <>
-                  <Grid item xs={12}>
-                    <FormControl fullWidth required>
-                      <InputLabel>Education Level</InputLabel>
-                      <Select
-                        name="educationLevel"
-                        value={formData.educationLevel}
-                        onChange={handleChange}
-                        label="Education Level"
-                      >
-                        <MenuItem value="BEGINNER">Beginner</MenuItem>
-                        <MenuItem value="INTERMEDIATE">Intermediate</MenuItem>
-                        <MenuItem value="ADVANCED">Advanced</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      required
-                      fullWidth
-                      name="cin"
-                      label="CIN (Carte d'Identité Nationale)"
-                      value={formData.cin}
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Class</InputLabel>
+                    <Select
+                      name="classe"
+                      value={formData.classe || ''}
                       onChange={handleChange}
-                      inputProps={{ maxLength: 8 }}
-                      helperText="Numéro d'identité nationale (obligatoire pour les étudiants)"
-                    />
-                  </Grid>
-                </>
-              )}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  name="department"
-                  label="Department"
-                  value={formData.department}
-                  onChange={handleChange}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formData.accountStatus}
-                      onChange={handleChange}
-                      name="accountStatus"
-                    />
-                  }
-                  label="Account Active"
-                />
-              </Grid>
+                      label="Class"
+                    >
+                      <MenuItem value="">Not Assigned</MenuItem>
+                      {classes.map(classItem => (
+                        <MenuItem key={classItem._id} value={classItem._id}>
+                          {classItem.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </>
+            )}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                name="department"
+                label="Department"
+                value={formData.department}
+                onChange={handleChange}
+              />
             </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={onClose}>Cancel</Button>
-            <Button type="submit" variant="contained" color="primary">
-              {mode === 'create' ? 'Add User' : 'Save Changes'}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
-    );
-  };
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.accountStatus}
+                    onChange={handleChange}
+                    name="accountStatus"
+                  />
+                }
+                label="Account Active"
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button type="submit" variant="contained" color="primary">
+            {mode === 'create' ? 'Add User' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  );
+};
 
 UserFormDialog.propTypes = {
   open: PropTypes.bool.isRequired,
@@ -1140,7 +1258,8 @@ UserFormDialog.propTypes = {
     accountStatus: PropTypes.bool,
     birthDate: PropTypes.instanceOf(Date),
     educationLevel: PropTypes.string,
-    department: PropTypes.string
+    department: PropTypes.string,
+    classe: PropTypes.any
   })
 };
 
@@ -1328,8 +1447,63 @@ const FaceLogin = ({ onLogin, onCancel }) => {
 
 export default FaceLogin; 
 ================================================================================
+FILE: src\components\KanbanBoard.jsx
+================================================================================
+
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { updateTaskStatus } from '../api/taskApi';
+
+const statuses = ['TODO', 'IN_PROGRESS', 'COMPLETED'];
+
+const KanbanBoard = ({ tasks }) => {
+  const groupedTasks = statuses.reduce((acc, status) => {
+    acc[status] = tasks?.filter(task => task.status === status) || [];
+    return acc;
+  }, {});
+  const onDragEnd = async (result) => {
+    if (!result.destination) return;
+    const { source, destination } = result;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+    const taskId = result.draggableId;
+    const newStatus = destination.droppableId;
+    try {
+      await updateTaskStatus(taskId, newStatus);
+      // Optionally, update local state or re-fetch tasks
+    } catch (error) {
+      console.error('Error updating task status:', error);
+    }
+  };
+
+  return (
+    <DragDropContext onDragEnd={onDragEnd}>
+      {statuses.map(status => (
+        <Droppable key={status} droppableId={status}>
+          {(provided) => (
+            <div ref={provided.innerRef} {...provided.droppableProps} style={{ margin: '10px' }}>
+              <h2>{status}</h2>
+              {groupedTasks[status].map((task, index) => (
+                <Draggable key={task._id} draggableId={task._id} index={index}>
+                  {(provided) => (
+                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} style={{ padding: '10px', margin: '5px 0', border: '1px solid #ccc' }}>
+                      {task.title}
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      ))}
+    </DragDropContext>
+  );
+};
+
+export default KanbanBoard;
+================================================================================
 FILE: src\components\layout\DashboardLayout.jsx
 ================================================================================
+
 
 // src/components/layout/DashboardLayout.jsx
 import { useState, useEffect } from 'react';
@@ -1457,6 +1631,7 @@ FILE: src\components\layout\Sidebar.css
 FILE: src\components\layout\Sidebar.jsx
 ================================================================================
 
+// src/components/layout/Sidebar.jsx
 import {
   Drawer,
   List,
@@ -1476,7 +1651,8 @@ import {
   School as SchoolIcon,
   Assignment as AssignmentIcon,
   ExitToApp as ExitToAppIcon,
-  AccountCircle as AccountCircleIcon
+  AccountCircle as AccountCircleIcon,
+  Class as ClassIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
@@ -1505,6 +1681,11 @@ const Sidebar = ({ user }) => {
       ]
     },
     {
+      text: 'Classes Management',
+      icon: <ClassIcon style={{ color: 'white' }} />,
+      path: '/admin/classes'
+    },
+    {
       text: 'Projects',
       icon: <AssignmentIcon style={{ color: 'white' }} />,
       path: '/admin/projects'
@@ -1530,13 +1711,9 @@ const Sidebar = ({ user }) => {
         }
       });
       
-      // Clear all storage
       localStorage.clear();
       sessionStorage.clear();
-      
-      // Force a complete page reload and redirect
       window.location.replace('/signin');
-      
     } catch (error) {
       console.error('Logout error:', error);
       localStorage.clear();
@@ -1547,91 +1724,88 @@ const Sidebar = ({ user }) => {
 
   return (
     <Drawer
-        variant="permanent"
-        className="sidebar" // Apply the CSS class here
-        sx={{
+      variant="permanent"
+      className="sidebar"
+      sx={{
+        width: drawerWidth,
+        flexShrink: 0,
+        '& .MuiDrawer-paper': {
           width: drawerWidth,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-            bgcolor: 'background.paper'
-          },
-        }}
-      >
-<Toolbar sx={{ minHeight: '100px' }}> {/* Set minHeight to match image */}
-  <Box
-    component="div"
-    sx={{
-      flexGrow: 1,
-      display: 'flex',
-      alignItems: 'center'
-    }}
-  >
-    <img 
-      src="/Lab2.png" 
-      alt="Logo"
-      style={{ height: '80px', objectFit: 'contain' }} // Adjust if needed
-    /> 
-  </Box>
-</Toolbar>
+          boxSizing: 'border-box',
+          bgcolor: 'background.paper'
+        },
+      }}
+    >
+      <Toolbar sx={{ minHeight: '100px' }}>
+        <Box
+          component="div"
+          sx={{
+            flexGrow: 1,
+            display: 'flex',
+            alignItems: 'center'
+          }}
+        >
+          <img 
+            src="/Lab2.png" 
+            alt="Logo"
+            style={{ height: '80px', objectFit: 'contain' }}
+          /> 
+        </Box>
+      </Toolbar>
 
-        <Divider />
-        
-        {user && (
-          <Box sx={{ p: 2, textAlign: 'center' }}>
-            <Avatar 
-              src={user.profilePicture || user.faceImage ? `http://localhost:5001${user.profilePicture || user.faceImage}` : null} 
-              sx={{ 
-                width: 80, 
-                height: 80, 
-                margin: '0 auto 1rem',
-                bgcolor: '#dd2825'
-              }}
-            >
-              {(!user.profilePicture && !user.faceImage) && user.firstName?.charAt(0)}
-            </Avatar>
-            <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'bold' }}>
-              {user.firstName} {user.lastName}
-            </Typography>
+      <Divider />
+      
+      {user && (
+        <Box sx={{ p: 2, textAlign: 'center' }}>
+          <Avatar 
+            src={user.profilePicture || user.faceImage ? `http://localhost:5001${user.profilePicture || user.faceImage}` : null} 
+            sx={{ 
+              width: 80, 
+              height: 80, 
+              margin: '0 auto 1rem',
+              bgcolor: '#dd2825'
+            }}
+          >
+            {(!user.profilePicture && !user.faceImage) && user.firstName?.charAt(0)}
+          </Avatar>
+          <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'bold' }}>
+            {user.firstName} {user.lastName}
+          </Typography>
+        </Box>
+      )}
+
+      <Divider />
+      
+      <List>
+        {menuItems.map((item) => (
+          <Box key={item.text}>
+            <ListItem disablePadding>
+              <ListItemButton
+                selected={location.pathname === item.path}
+                onClick={() => navigate(item.path)}
+              >
+                <ListItemIcon>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.text} />
+              </ListItemButton>
+            </ListItem>
+            {item.subItems && (
+              <List component="div" disablePadding>
+                {item.subItems.map((subItem) => (
+                  <ListItemButton
+                    key={subItem.text}
+                    sx={{ pl: 4 }}
+                    selected={location.pathname === subItem.path}
+                    onClick={() => navigate(subItem.path)}
+                  >
+                    <ListItemIcon>{subItem.icon}</ListItemIcon>
+                    <ListItemText primary={subItem.text} />
+                  </ListItemButton>
+                ))}
+              </List>
+            )}
           </Box>
-        )}
-
-        <Divider />
-        
-        <List>
-          {menuItems.map((item) => (
-            <Box key={item.text}>
-              <ListItem disablePadding>
-                <ListItemButton
-                  selected={location.pathname === item.path}
-                  onClick={() => navigate(item.path)}
-                >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.text} />
-                </ListItemButton>
-              </ListItem>
-              {item.subItems && (
-                <List component="div" disablePadding>
-                  {item.subItems.map((subItem) => (
-                    <ListItemButton
-                      key={subItem.text}
-                      sx={{ pl: 4 }}
-                      selected={location.pathname === subItem.path}
-                      onClick={() => navigate(subItem.path)}
-                    >
-                      <ListItemIcon>{subItem.icon}</ListItemIcon>
-                      <ListItemText primary={subItem.text} />
-                    </ListItemButton>
-                    
-                  ))}
-                  
-                </List>
-                
-              )}
-            </Box>
-          ))}
-             <ListItem disablePadding>
+        ))}
+        <ListItem disablePadding>
           <ListItemButton onClick={handleLogout}>
             <ListItemIcon>
               <ExitToAppIcon style={{ color: 'white' }} />
@@ -1639,13 +1813,12 @@ const Sidebar = ({ user }) => {
             <ListItemText primary="Logout" />
           </ListItemButton>
         </ListItem>
-        </List>
-      </Drawer>
+      </List>
+    </Drawer>
   );
 };
 
 export default Sidebar;
-
 ================================================================================
 FILE: src\components\layout\StudentDashboardLayout.jsx
 ================================================================================
@@ -1916,6 +2089,7 @@ export default StudentSidebar;
 FILE: src\components\layout\TutorDashboardLayout.jsx
 ================================================================================
 
+// src/components/layout/TutorDashboardLayout.jsx
 import { useState, useEffect } from 'react';
 import { Box, Toolbar, Typography } from '@mui/material';
 import TutorSidebar from './TutorSidebar';
@@ -1942,7 +2116,6 @@ const TutorDashboardLayout = () => {
           const data = await response.json();
           setUser(data);
           
-          // Rediriger si l'utilisateur n'est pas un tuteur
           if (data.userRole !== 'TUTOR') {
             if (data.userRole === 'ADMIN') {
               window.location.replace('/admin');
@@ -2000,11 +2173,12 @@ const TutorDashboardLayout = () => {
   );
 };
 
-export default TutorDashboardLayout; 
+export default TutorDashboardLayout;
 ================================================================================
 FILE: src\components\layout\TutorSidebar.jsx
 ================================================================================
 
+// src/components/layout/TutorSidebar.jsx
 import {
   Drawer,
   List,
@@ -2020,17 +2194,17 @@ import {
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
-  People as PeopleIcon,
-  Assessment as AssessmentIcon,
   Assignment as AssignmentIcon,
+  Group as GroupIcon,
   ExitToApp as ExitToAppIcon,
   AccountCircle as AccountCircleIcon,
-  Add as AddIcon,
-  Task as TaskIcon
+  Task as TaskIcon,
+  Class as ClassIcon,
+  People as PeopleIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import './Sidebar.css'; // Réutilisation du même style
+import './Sidebar.css';
 
 const drawerWidth = 240;
 
@@ -2050,28 +2224,29 @@ const TutorSidebar = ({ user }) => {
       path: '/tutor/profile'
     },
     {
+      text: 'Classes',
+      icon: <ClassIcon style={{ color: 'white' }} />, // Using ClassIcon for Classes
+      path: '/tutor/classes'
+    },
+    {
       text: 'Students',
-      icon: <PeopleIcon style={{ color: 'white' }} />,
+      icon: <PeopleIcon style={{ color: 'white' }} />, // Using PeopleIcon for Students
       path: '/tutor/students'
     },
     {
       text: 'Projects',
-      icon: <AssignmentIcon style={{ color: 'white' }} />,
-      path: '/tutor/projects',
-      subItems: [
-        { text: 'All Projects', icon: <AssignmentIcon style={{ color: 'white' }} />, path: '/tutor/projects' },
-        { text: 'Create Project', icon: <AddIcon style={{ color: 'white' }} />, path: '/tutor/projects/create' },
-      ]
+      icon: <TaskIcon style={{ color: 'white' }} />, // Using TaskIcon for Projects
+      path: '/tutor/projects'
     },
     {
-      text: 'My Tasks',
-      icon: <TaskIcon style={{ color: 'white' }} />,
-      path: '/tutor/tasks'
+      text: 'Assignments',
+      icon: <AssignmentIcon style={{ color: 'white' }} />, // Using AssignmentIcon for Assignments
+      path: '/tutor/assignments' // Assuming a new route for managing assignments
     },
     {
-      text: 'Evaluations',
-      icon: <AssessmentIcon style={{ color: 'white' }} />,
-      path: '/tutor/evaluations'
+      text: 'Groups',
+      icon: <GroupIcon style={{ color: 'white' }} />, // Using GroupIcon for Groups
+      path: '/tutor/groups' // Assuming a new route for managing groups
     }
   ];
 
@@ -2089,13 +2264,9 @@ const TutorSidebar = ({ user }) => {
         }
       });
       
-      // Clear all storage
       localStorage.clear();
       sessionStorage.clear();
-      
-      // Force a complete page reload and redirect
       window.location.replace('/signin');
-      
     } catch (error) {
       console.error('Logout error:', error);
       localStorage.clear();
@@ -2188,12 +2359,399 @@ const TutorSidebar = ({ user }) => {
   );
 };
 
-export default TutorSidebar; 
-================================================================================
-FILE: src\context\UserContext.jsx
-================================================================================
+export default TutorSidebar;
 
  
+================================================================================
+FILE: src\pages\admin\ClassesManagement.jsx
+================================================================================
+
+// src/pages/admin/ClassesManagement.jsx
+import { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Button,
+  IconButton,
+  LinearProgress,
+  Alert,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  Chip,
+  Autocomplete
+} from '@mui/material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, GroupAdd as GroupAddIcon } from '@mui/icons-material';
+import { fetchClasses, createClass, updateClass, deleteClass, addStudentsToClass } from '../../api/classApi';
+import { fetchUsers } from '../../api/userApi';
+
+const ClassesManagement = () => {
+  const [classes, setClasses] = useState([]);
+  const [tutors, setTutors] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [openAddStudentsDialog, setOpenAddStudentsDialog] = useState(false);
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [formData, setFormData] = useState({ name: '', description: '', tutorId: '' });
+  const [selectedStudents, setSelectedStudents] = useState([]);
+
+  useEffect(() => {
+    fetchAllClasses();
+    fetchTutorsAndStudents();
+  }, []);
+
+  const fetchAllClasses = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await fetchClasses();
+      setClasses(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTutorsAndStudents = async () => {
+    try {
+      const tutorsData = await fetchUsers('TUTOR');
+      const studentsData = await fetchUsers('STUDENT');
+      setTutors(tutorsData);
+      setStudents(studentsData);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleOpenCreateDialog = () => {
+    setFormData({ name: '', description: '', tutorId: '' });
+    setOpenCreateDialog(true);
+  };
+
+  const handleCloseCreateDialog = () => {
+    setOpenCreateDialog(false);
+  };
+
+  const handleOpenEditDialog = (classItem) => {
+    setSelectedClass(classItem);
+    setFormData({
+      name: classItem.name,
+      description: classItem.description || '',
+      tutorId: classItem.tutor._id
+    });
+    setOpenEditDialog(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setOpenEditDialog(false);
+    setSelectedClass(null);
+  };
+
+  const handleOpenAddStudentsDialog = (classItem) => {
+    setSelectedClass(classItem);
+    setSelectedStudents([]);
+    setOpenAddStudentsDialog(true);
+  };
+
+  const handleCloseAddStudentsDialog = () => {
+    setOpenAddStudentsDialog(false);
+    setSelectedClass(null);
+  };
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCreateClass = async (e) => {
+    e.preventDefault();
+    try {
+      const newClass = await createClass(formData);
+      setClasses([...classes, newClass]);
+      handleCloseCreateDialog();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleUpdateClass = async (e) => {
+    e.preventDefault();
+    try {
+      const updatedClass = await updateClass(selectedClass._id, formData);
+      setClasses(classes.map(c => (c._id === selectedClass._id ? updatedClass : c)));
+      handleCloseEditDialog();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteClass = async (classId) => {
+    if (window.confirm('Are you sure you want to delete this class?')) {
+      try {
+        await deleteClass(classId);
+        setClasses(classes.filter(c => c._id !== classId));
+      } catch (err) {
+        setError(err.message);
+      }
+    }
+  };
+
+  const handleAddStudents = async () => {
+    try {
+      const studentIds = selectedStudents.map(student => student._id);
+      const updatedClass = await addStudentsToClass(selectedClass._id, studentIds);
+      setClasses(classes.map(c => (c._id === selectedClass._id ? updatedClass : c)));
+      fetchAllClasses();
+
+      handleCloseAddStudentsDialog();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+        <Typography variant="h5" sx={{ color: '#dd2825' }}>
+          Classes Management
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleOpenCreateDialog}
+          sx={{
+            backgroundColor: '#dd2825',
+            color: 'white',
+            '&:hover': { backgroundColor: '#c42020' }
+          }}
+        >
+          Create Class
+        </Button>
+      </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      {loading ? (
+        <LinearProgress />
+      ) : classes.length === 0 ? (
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h6">No Classes Found</Typography>
+          <Typography variant="body1" sx={{ mt: 1 }}>
+            Create a new class to get started.
+          </Typography>
+        </Paper>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                <TableCell>Class Name</TableCell>
+                <TableCell>Description</TableCell>
+                <TableCell>Tutor</TableCell>
+                <TableCell>Number of Students</TableCell>
+                <TableCell>Created By</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {classes.map((classItem) => (
+                <TableRow key={classItem._id} hover>
+                  <TableCell>{classItem.name}</TableCell>
+                  <TableCell>{classItem.description || 'No description'}</TableCell>
+                  <TableCell>{classItem.tutor ? `${classItem.tutor.firstName} ${classItem.tutor.lastName}` : 'Not assigned'}</TableCell>
+                  <TableCell>{classItem.students.length}</TableCell>
+                  <TableCell>{classItem.createdBy ? `${classItem.createdBy.firstName} ${classItem.createdBy.lastName}` : 'Unknown'}</TableCell>
+                  <TableCell align="right">
+                    <Tooltip title="Edit Class">
+                      <IconButton onClick={() => handleOpenEditDialog(classItem)} size="small">
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Add Students">
+                      <IconButton onClick={() => handleOpenAddStudentsDialog(classItem)} size="small">
+                        <GroupAddIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete Class">
+                      <IconButton onClick={() => handleDeleteClass(classItem._id)} size="small" color="error">
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      {/* Create Class Dialog */}
+      <Dialog open={openCreateDialog} onClose={handleCloseCreateDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Create New Class</DialogTitle>
+        <form onSubmit={handleCreateClass}>
+          <DialogContent>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  name="name"
+                  label="Class Name"
+                  value={formData.name}
+                  onChange={handleFormChange}
+                  fullWidth
+                  required
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  name="description"
+                  label="Description"
+                  value={formData.description}
+                  onChange={handleFormChange}
+                  fullWidth
+                  multiline
+                  rows={3}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth required>
+                  <InputLabel>Tutor</InputLabel>
+                  <Select
+                    name="tutorId"
+                    value={formData.tutorId}
+                    onChange={handleFormChange}
+                    label="Tutor"
+                  >
+                    {tutors.map(tutor => (
+                      <MenuItem key={tutor._id} value={tutor._id}>
+                        {tutor.firstName} {tutor.lastName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseCreateDialog}>Cancel</Button>
+            <Button type="submit" variant="contained" sx={{ backgroundColor: '#dd2825', color: 'white' }}>
+              Create
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      {/* Edit Class Dialog */}
+      <Dialog open={openEditDialog} onClose={handleCloseEditDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Class</DialogTitle>
+        <form onSubmit={handleUpdateClass}>
+          <DialogContent>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  name="name"
+                  label="Class Name"
+                  value={formData.name}
+                  onChange={handleFormChange}
+                  fullWidth
+                  required
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  name="description"
+                  label="Description"
+                  value={formData.description}
+                  onChange={handleFormChange}
+                  fullWidth
+                  multiline
+                  rows={3}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth required>
+                  <InputLabel>Tutor</InputLabel>
+                  <Select
+                    name="tutorId"
+                    value={formData.tutorId}
+                    onChange={handleFormChange}
+                    label="Tutor"
+                  >
+                    {tutors.map(tutor => (
+                      <MenuItem key={tutor._id} value={tutor._id}>
+                        {tutor.firstName} {tutor.lastName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseEditDialog}>Cancel</Button>
+            <Button type="submit" variant="contained" sx={{ backgroundColor: '#dd2825', color: 'white' }}>
+              Save Changes
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      {/* Add Students Dialog */}
+      <Dialog open={openAddStudentsDialog} onClose={handleCloseAddStudentsDialog} maxWidth="md" fullWidth>
+        <DialogTitle>Add Students to {selectedClass?.name}</DialogTitle>
+        <DialogContent>
+          <Autocomplete
+            multiple
+            options={students.filter(student => !selectedClass?.students.some(s => s._id === student._id))}
+            getOptionLabel={(option) => `${option.firstName} ${option.lastName} (${option.email})`}
+            value={selectedStudents}
+            onChange={(event, newValue) => setSelectedStudents(newValue)}
+            renderInput={(params) => (
+              <TextField {...params} label="Select Students" placeholder="Search students..." />
+            )}
+            fullWidth
+            sx={{ mt: 2 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseAddStudentsDialog}>Cancel</Button>
+          <Button
+            onClick={handleAddStudents}
+            variant="contained"
+            disabled={selectedStudents.length === 0}
+            sx={{ backgroundColor: '#dd2825', color: 'white' }}
+          >
+            Add Students
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default ClassesManagement;
 ================================================================================
 FILE: src\pages\admin\Profile.jsx
 ================================================================================
@@ -3094,6 +3652,7 @@ const UsersList = () => {
 };
 
 export default UsersList;
+
 ================================================================================
 FILE: src\pages\AuthTransfer.jsx
 ================================================================================
@@ -3105,7 +3664,6 @@ import { Box, CircularProgress, Typography } from '@mui/material';
 const AuthTransfer = () => {
   const navigate = useNavigate();
   const [error, setError] = useState('');
-
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
       try {
@@ -3221,6 +3779,7 @@ export default AuthTransfer;
 ================================================================================
 FILE: src\pages\forgotPassword.jsx
 ================================================================================
+
 
 import { useState, useEffect } from 'react';
 import { Box, Container, TextField, Button, Typography, Link, Paper, Alert } from '@mui/material';
@@ -3346,7 +3905,6 @@ const ForgotPassword = () => {
 };
 
 export default ForgotPassword;
-
 ================================================================================
 FILE: src\pages\NotFound.jsx
 ================================================================================
@@ -3394,6 +3952,7 @@ export default NotFound;
 ================================================================================
 FILE: src\pages\reserPassword.jsx
 ================================================================================
+
 
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -3529,14 +4088,13 @@ const ResetPassword = () => {
 };
 
 export default ResetPassword;
-
 ================================================================================
 FILE: src\pages\SignIn.jsx
 ================================================================================
 
+
 import { useState, useEffect } from 'react';
 import GitHubIcon from '@mui/icons-material/GitHub';
-import { useGoogleLogin } from '@react-oauth/google';
 import { isAuthenticated } from '../utils/authUtils';
 import FaceLogin from '../components/FaceLogin';
 import FaceIcon from '@mui/icons-material/Face';
@@ -3788,7 +4346,7 @@ const SignIn = () => {
                   </div>
                 </div>
                 <div>
-                  Réessayez après l'expiration du délai ou{' '}
+                  Réessayez après lexpiration du délai ou{' '}
                   <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{ fontWeight: 'bold' }}>
                     réinitialisez votre mot de passe
                   </Link>.
@@ -4592,6 +5150,7 @@ export default ProjectDetails;
 FILE: src\pages\student\ProjectsList.jsx
 ================================================================================
 
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -5237,7 +5796,336 @@ const TasksList = () => {
   );
 };
 
-export default TasksList; 
+export default TasksList;
+================================================================================
+FILE: src\pages\tutor\ClassesList.jsx
+================================================================================
+
+// src/pages/tutor/ClassesList.jsx
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  LinearProgress,
+  Alert,
+  Tooltip
+} from '@mui/material';
+import { Visibility as VisibilityIcon } from '@mui/icons-material';
+import { fetchClasses } from '../../api/classApi';
+
+const ClassesList = () => {
+  const navigate = useNavigate();
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchTutorClasses();
+  }, []);
+
+  const fetchTutorClasses = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await fetchClasses();
+      setClasses(data);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching classes:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewDetails = (classId) => {
+    navigate(`/tutor/classes/${classId}`);
+  };
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h5" sx={{ mb: 3, color: '#dd2825' }}>
+        My Classes
+      </Typography>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      {loading ? (
+        <LinearProgress />
+      ) : classes.length === 0 ? (
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h6">No Classes Assigned</Typography>
+          <Typography variant="body1" sx={{ mt: 1 }}>
+            You are not assigned to any classes yet. Please contact the admin.
+          </Typography>
+        </Paper>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                <TableCell>Class Name</TableCell>
+                <TableCell>Description</TableCell>
+                <TableCell>Number of Students</TableCell>
+                <TableCell>Created By</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {classes.map((classItem) => (
+                <TableRow key={classItem._id} hover>
+                  <TableCell>{classItem.name}</TableCell>
+                  <TableCell>{classItem.description || 'No description'}</TableCell>
+                  <TableCell>{classItem.students.length}</TableCell>
+                  <TableCell>
+                    {classItem.createdBy ? `${classItem.createdBy.firstName} ${classItem.createdBy.lastName}` : 'Unknown'}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Tooltip title="View Details">
+                      <IconButton
+                        onClick={() => handleViewDetails(classItem._id)}
+                        size="small"
+                      >
+                        <VisibilityIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </Box>
+  );
+};
+
+export default ClassesList;
+================================================================================
+FILE: src\pages\tutor\components\ClassDetails.jsx
+================================================================================
+
+// src/pages/tutor/ClassDetails.jsx
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Button,
+  LinearProgress,
+  Alert,
+  Divider,
+  Grid,
+  Chip,
+  Avatar,
+  Tooltip,
+  IconButton
+} from '@mui/material';
+import { ArrowBack as ArrowBackIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
+import { fetchClassById } from '../../../api/classApi';
+
+const ClassDetails = () => {
+  const { classId } = useParams();
+  const navigate = useNavigate();
+  const [classDetails, setClassDetails] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchClassDetails();
+  }, [classId]);
+
+  const fetchClassDetails = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await fetchClassById(classId);
+      setClassDetails(data);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching class details:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBack = () => {
+    navigate('/tutor/classes');
+  };
+
+  const handleViewStudent = (studentId) => {
+    navigate(`/tutor/students/${studentId}`); // You may need to create a student details page if required
+  };
+
+  const getProfileImageUrl = (user) => {
+    if (!user) return null;
+    if (user.profilePicture || user.faceImage || user.avatar) {
+      const imagePath = user.profilePicture || user.faceImage || user.avatar;
+      if (imagePath.startsWith('http')) {
+        return imagePath;
+      } else {
+        return `http://localhost:5001${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+      }
+    }
+    return null;
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <LinearProgress />
+        <Typography sx={{ mt: 2, textAlign: 'center' }}>Loading class details...</Typography>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+        <Button sx={{ mt: 2 }} onClick={handleBack}>
+          Back to Classes
+        </Button>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={handleBack}
+          sx={{ mr: 2 }}
+        >
+          Back
+        </Button>
+        <Typography variant="h5" sx={{ color: '#dd2825' }}>
+          Class Details
+        </Typography>
+      </Box>
+
+      {classDetails && (
+        <Paper sx={{ p: 4 }}>
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Typography variant="h4">{classDetails.name}</Typography>
+              <Typography variant="body1" sx={{ mt: 1 }}>
+                {classDetails.description || 'No description provided'}
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="h6">Class Information</Typography>
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="body2" color="text.secondary">Created By</Typography>
+                  <Typography variant="body1">
+                    {classDetails.createdBy ? `${classDetails.createdBy.firstName} ${classDetails.createdBy.lastName}` : 'Unknown'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="body2" color="text.secondary">Created At</Typography>
+                  <Typography variant="body1">
+                    {new Date(classDetails.createdAt).toLocaleDateString()}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="body2" color="text.secondary">Number of Students</Typography>
+                  <Typography variant="body1">{classDetails.students.length}</Typography>
+                </Grid>
+              </Grid>
+            </Grid>
+
+            <Grid item xs={12}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="h6">Students</Typography>
+              {classDetails.students.length === 0 ? (
+                <Typography sx={{ mt: 2 }}>No students assigned to this class.</Typography>
+              ) : (
+                <TableContainer component={Paper} sx={{ mt: 2 }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                        <TableCell>Student</TableCell>
+                        <TableCell>Email</TableCell>
+                        <TableCell>CIN</TableCell>
+                        <TableCell>Education Level</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {classDetails.students.map((student) => (
+                        <TableRow key={student._id} hover>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Avatar 
+                                src={getProfileImageUrl(student)}
+                                alt={`${student.firstName} ${student.lastName}`}
+                                sx={{ mr: 2, width: 40, height: 40 }}
+                              >
+                                {student.firstName?.charAt(0)}{student.lastName?.charAt(0)}
+                              </Avatar>
+                              <Typography>{student.firstName} {student.lastName}</Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell>{student.email}</TableCell>
+                          <TableCell>{student.cin || 'Not provided'}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={student.educationLevel || 'BEGINNER'} 
+                              size="small"
+                              color={
+                                student.educationLevel === 'ADVANCED' ? 'success' :
+                                student.educationLevel === 'INTERMEDIATE' ? 'primary' : 'default'
+                              }
+                            />
+                          </TableCell>
+                          <TableCell align="right">
+                            <Tooltip title="View Details">
+                              <IconButton
+                                onClick={() => handleViewStudent(student._id)}
+                                size="small"
+                              >
+                                <VisibilityIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
+    </Box>
+  );
+};
+
+export default ClassDetails;
 ================================================================================
 FILE: src\pages\tutor\Dashboard.jsx
 ================================================================================
@@ -5598,30 +6486,26 @@ export default ProjectCreate;
 FILE: src\pages\tutor\ProjectDetails.jsx
 ================================================================================
 
+// src/pages/tutor/ProjectDetails.jsx
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
   Paper,
-  Grid,
-  Chip,
   Button,
-  LinearProgress,
+  Chip,
   Divider,
-  Avatar,
-  AvatarGroup,
+  Grid,
   Alert,
-  Tab,
-  Tabs
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Avatar
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import EditIcon from '@mui/icons-material/Edit';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import GroupAddIcon from '@mui/icons-material/GroupAdd';
-import dayjs from 'dayjs';
-import DeleteIcon from '@mui/icons-material/Delete';
-import TaskIcon from '@mui/icons-material/Task';
+import { api } from '../../api/axiosConfig';
 
 const ProjectDetails = () => {
   const { projectId } = useParams();
@@ -5630,93 +6514,53 @@ const ProjectDetails = () => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tabValue, setTabValue] = useState(0);
 
+  // Fetch project and tasks data
   useEffect(() => {
-    const fetchProjectDetails = async () => {
-      setLoading(true);
-      setError('');
-      
+    const fetchProjectAndTasks = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          throw new Error('Authentication required');
-        }
-        
-        const response = await fetch(`http://localhost:5001/api/projects/${projectId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+        setLoading(true);
+        setError('');
+
+        // Fetch project details
+        const projectResponse = await api.get(`/projects/${projectId}`);
+        setProject(projectResponse.data);
+
+        // Fetch tasks specific to this project
+        const tasksResponse = await api.get('/tasks', {
+          params: { projectId }
         });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch project details');
-        }
-        
-        const data = await response.json();
-        setProject(data.project);
-        setTasks(data.tasks || []);
+        setTasks(tasksResponse.data);
       } catch (err) {
-        setError(err.message);
-        console.error('Error fetching project:', err);
+        setError(err.response?.data?.message || 'Failed to fetch project or tasks');
+        console.error('Fetch error:', err);
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchProjectDetails();
+
+    fetchProjectAndTasks();
   }, [projectId]);
 
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
-  };
-
+  // Navigation handlers
   const handleBack = () => {
     navigate('/tutor/projects');
   };
 
-  const handleEdit = () => {
-    navigate(`/tutor/projects/${projectId}/edit`);
-  };
-
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
-      return;
-    }
-    
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Authentication required');
-      }
-      
-      const response = await fetch(`http://localhost:5001/api/projects/${projectId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete project');
-      }
-      
-      // Success - redirect to projects list
-      navigate('/tutor/projects');
-      
-    } catch (err) {
-      setError(err.message);
-      console.error('Error deleting project:', err);
-    }
-  };
-
-  const handleManageTasks = () => {
+  const handleViewTasks = () => {
     navigate(`/tutor/projects/${projectId}/tasks`);
   };
 
+  // Calculate task summary and progress
+  const taskSummary = {
+    todo: tasks.filter(t => t.status === 'TODO').length,
+    inProgress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
+    completed: tasks.filter(t => t.status === 'COMPLETED').length
+  };
+  const totalTasks = tasks.length;
+  const progress = totalTasks > 0 ? (taskSummary.completed / totalTasks) * 100 : 0;
+
+  // Loading state
   if (loading) {
     return (
       <Box sx={{ p: 3 }}>
@@ -5726,284 +6570,147 @@ const ProjectDetails = () => {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-        <Button 
-          startIcon={<ArrowBackIcon />}
-          onClick={handleBack}
-        >
+        <Alert severity="error">{error}</Alert>
+        <Button sx={{ mt: 2 }} onClick={handleBack}>
           Back to Projects
         </Button>
       </Box>
     );
   }
 
-  if (!project) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="warning" sx={{ mb: 2 }}>Project not found.</Alert>
-        <Button 
-          startIcon={<ArrowBackIcon />}
-          onClick={handleBack}
-        >
-          Back to Projects
-        </Button>
-      </Box>
-    );
-  }
-
+  // Main render
   return (
     <Box sx={{ p: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Button 
-            startIcon={<ArrowBackIcon />}
-            onClick={handleBack}
-          >
-            Back
-          </Button>
-          <Typography variant="h5" sx={{ color: '#dd2825' }}>{project.name}</Typography>
-          <Chip 
-            label={project.status.replace('_', ' ')} 
-            color={project.status === 'PENDING' ? 'default' : 
-                  project.status === 'IN_PROGRESS' ? 'primary' : 
-                  project.status === 'COMPLETED' ? 'success' : 'secondary'}
-            size="small"
-          />
-        </Box>
-        
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            variant="outlined"
-            startIcon={<EditIcon />}
-            onClick={handleEdit}
-          >
-            Edit Project
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<DeleteIcon />}
-            onClick={handleDelete}
-          >
-            Delete Project
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AssignmentIcon />}
-            onClick={handleManageTasks}
-            sx={{
-              backgroundColor: '#dd2825',
-              color: 'white',
-              '&:hover': {
-                backgroundColor: '#c42020'
-              }
-            }}
-          >
-            Manage Tasks
-          </Button>
-        </Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <Button startIcon={<ArrowBackIcon />} onClick={handleBack} sx={{ mr: 2 }}>
+          Back
+        </Button>
+        <Typography variant="h5" sx={{ color: '#dd2825' }}>
+          {project.name}
+        </Typography>
       </Box>
 
-      {/* Main content */}
-      <Grid container spacing={3}>
-        {/* Left column - Project details */}
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-            <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
-              <Tab label="Overview" />
-              <Tab label="Tasks" />
-              <Tab label="Files" />
-              <Tab label="Members" />
-            </Tabs>
-            
-            <Divider sx={{ mb: 3 }} />
-            
-            {tabValue === 0 && (
-              <Box>
-                <Typography variant="h6" sx={{ mb: 2 }}>Project Description</Typography>
-                <Typography paragraph>{project.description}</Typography>
-                
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    <strong>Created:</strong> {dayjs(project.creationDate).format('MMM D, YYYY')}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    <strong>Start Date:</strong> {project.startDate ? dayjs(project.startDate).format('MMM D, YYYY') : 'Not set'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    <strong>End Date:</strong> {project.endDate ? dayjs(project.endDate).format('MMM D, YYYY') : 'Not set'}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    <strong>Tags:</strong>
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                    {project.tags && project.tags.length > 0 ? (
-                      project.tags.map(tag => (
-                        <Chip 
-                          key={tag} 
-                          label={tag} 
-                          size="small" 
-                          sx={{ backgroundColor: '#f1f1f1' }}
-                        />
-                      ))
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">No tags</Typography>
-                    )}
-                  </Box>
-                </Box>
-              </Box>
-            )}
-            
-            {tabValue === 1 && (
-              <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                  <Typography variant="h6">Project Tasks</Typography>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={() => navigate(`/tutor/projects/${projectId}/tasks/create`)}
-                    sx={{
-                      backgroundColor: '#dd2825',
-                      color: 'white',
-                      '&:hover': {
-                        backgroundColor: '#c42020'
-                      }
-                    }}
-                  >
-                    Add Task
-                  </Button>
-                </Box>
-                
-                {tasks.length === 0 ? (
-                  <Typography variant="body1" sx={{ textAlign: 'center', py: 3 }}>
-                    No tasks have been created for this project yet.
-                  </Typography>
-                ) : (
-                  <Typography variant="body1">Task list will be displayed here.</Typography>
-                )}
-              </Box>
-            )}
-            
-            {tabValue === 2 && (
-              <Box>
-                <Typography variant="h6" sx={{ mb: 2 }}>Project Files</Typography>
-                <Typography variant="body1" sx={{ textAlign: 'center', py: 3 }}>
-                  File management will be implemented soon.
-                </Typography>
-              </Box>
-            )}
-            
-            {tabValue === 3 && (
-              <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                  <Typography variant="h6">Project Members</Typography>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<GroupAddIcon />}
-                  >
-                    Add Member
-                  </Button>
-                </Box>
-                
-                {project.members && project.members.length > 0 ? (
-                  <Typography variant="body1">Member list will be displayed here.</Typography>
-                ) : (
-                  <Typography variant="body1" sx={{ textAlign: 'center', py: 3 }}>
-                    No members have been added to this project yet.
-                  </Typography>
-                )}
-              </Box>
-            )}
-          </Paper>
+      <Paper sx={{ p: 4 }}>
+        {/* Project Overview */}
+        <Typography variant="h6" gutterBottom>Project Overview</Typography>
+        <Grid container spacing={2} sx={{ mb: 4 }}>
+          <Grid item xs={12} sm={6}>
+            <Typography><strong>Status:</strong> {project.status}</Typography>
+            <Typography><strong>Description:</strong> {project.description || 'No description available'}</Typography>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Button
+              variant="contained"
+              onClick={handleViewTasks}
+              sx={{ backgroundColor: '#dd2825', '&:hover': { backgroundColor: '#c42020' } }}
+            >
+              View All Tasks
+            </Button>
+          </Grid>
         </Grid>
-        
-        {/* Right column - Stats and quick info */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, borderRadius: 2, mb: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>Project Progress</Typography>
-            
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Box sx={{ width: '100%', mr: 1 }}>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={project.progressPercentage || 0} 
-                  sx={{ 
-                    height: 10, 
-                    borderRadius: 5,
-                    backgroundColor: '#e0e0e0'
-                  }}
+
+        <Divider sx={{ mb: 4 }} />
+
+        {/* Task List */}
+        <Typography variant="h6" gutterBottom>Tasks</Typography>
+        {tasks.length === 0 ? (
+          <Typography>No tasks found for this project.</Typography>
+        ) : (
+          <List>
+            {tasks.map(task => (
+              <ListItem
+                key={task._id}
+                button
+                onClick={() => navigate(`/tutor/projects/${projectId}/tasks/${task._id}`)}
+                sx={{ mb: 1, border: '1px solid #eee', borderRadius: '4px' }}
+              >
+                <ListItemText
+                  primary={task.title}
+                  secondary={
+                    <>
+                      <Chip
+                        label={task.status}
+                        size="small"
+                        color={
+                          task.status === 'COMPLETED' ? 'success' :
+                          task.status === 'IN_PROGRESS' ? 'primary' : 'default'
+                        }
+                        sx={{ mr: 1 }}
+                      />
+                      <Chip
+                        label={task.priority}
+                        size="small"
+                        color={
+                          task.priority === 'HIGH' ? 'error' :
+                          task.priority === 'MEDIUM' ? 'warning' : 'info'
+                        }
+                      />
+                    </>
+                  }
                 />
-              </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  {`${Math.round(project.progressPercentage || 0)}%`}
-                </Typography>
-              </Box>
-            </Box>
-            
-            <Typography variant="body2" sx={{ fontWeight: 'medium', mt: 2 }}>
-              Task Summary:
-            </Typography>
-            
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-              <Typography variant="body2" color="text.secondary">Total Tasks:</Typography>
-              <Typography variant="body2">{tasks.length}</Typography>
-            </Box>
-            
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="body2" color="text.secondary">Completed:</Typography>
-              <Typography variant="body2">{tasks.filter(t => t.status === 'COMPLETED').length}</Typography>
-            </Box>
-            
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="body2" color="text.secondary">In Progress:</Typography>
-              <Typography variant="body2">{tasks.filter(t => t.status === 'IN_PROGRESS').length}</Typography>
-            </Box>
-            
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="body2" color="text.secondary">To Do:</Typography>
-              <Typography variant="body2">{tasks.filter(t => t.status === 'TODO').length}</Typography>
-            </Box>
-          </Paper>
-          
-          <Paper sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>Team Members</Typography>
-            
-            {project.members && project.members.length > 0 ? (
-              <>
-                <AvatarGroup max={5} sx={{ justifyContent: 'center', mb: 2 }}>
-                  {project.members.map((member, index) => (
-                    <Avatar 
-                      key={index} 
-                      alt={member.user.firstName}
-                      src={member.user.profilePicture ? `http://localhost:5001${member.user.profilePicture}` : undefined}
-                    >
-                      {member.user.firstName?.charAt(0)}
-                    </Avatar>
-                  ))}
-                </AvatarGroup>
-                <Typography variant="body2" sx={{ textAlign: 'center' }}>
-                  {project.members.length} member{project.members.length !== 1 ? 's' : ''}
-                </Typography>
-              </>
-            ) : (
-              <Typography variant="body2" sx={{ textAlign: 'center' }}>
-                No members added to this project yet.
-              </Typography>
-            )}
-          </Paper>
+              </ListItem>
+            ))}
+          </List>
+        )}
+        <Button
+          variant="contained"
+          onClick={() => navigate(`/tutor/projects/${projectId}/tasks/create`)}
+          sx={{ mt: 2, backgroundColor: '#dd2825', '&:hover': { backgroundColor: '#c42020' } }}
+        >
+          Add Task
+        </Button>
+
+        <Divider sx={{ my: 4 }} />
+
+        {/* Task Summary */}
+        <Typography variant="h6" gutterBottom>Task Summary</Typography>
+        <Grid container spacing={2} sx={{ mb: 4 }}>
+          <Grid item xs={4}>
+            <Typography>To Do: {taskSummary.todo}</Typography>
+          </Grid>
+          <Grid item xs={4}>
+            <Typography>In Progress: {taskSummary.inProgress}</Typography>
+          </Grid>
+          <Grid item xs={4}>
+            <Typography>Completed: {taskSummary.completed}</Typography>
+          </Grid>
         </Grid>
-      </Grid>
+
+        {/* Project Progress */}
+        <Typography variant="h6" gutterBottom>Project Progress</Typography>
+        <LinearProgress variant="determinate" value={progress} sx={{ mb: 1 }} />
+        <Typography>{progress.toFixed(2)}% Complete</Typography>
+
+        <Divider sx={{ my: 4 }} />
+
+        {/* Team Members */}
+        <Typography variant="h6" gutterBottom>Team Members</Typography>
+        {project.members && project.members.length > 0 ? (
+          <Grid container spacing={2}>
+            {project.members.map(member => (
+              <Grid item xs={12} sm={6} md={4} key={member._id}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Avatar sx={{ mr: 2 }}>
+                    {member.firstName[0]}{member.lastName[0]}
+                  </Avatar>
+                  <Typography>{member.firstName} {member.lastName}</Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          <Typography>No team members assigned.</Typography>
+        )}
+      </Paper>
     </Box>
   );
 };
 
-export default ProjectDetails; 
+export default ProjectDetails;
 ================================================================================
 FILE: src\pages\tutor\ProjectEdit.jsx
 ================================================================================
@@ -6344,24 +7051,8 @@ FILE: src\pages\tutor\ProjectsList.jsx
 ================================================================================
 
 import { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Paper,
-  Card,
-  CardContent,
-  CardActions,
-  Button,
-  Chip,
-  Grid,
-  TextField,
-  InputAdornment,
-  LinearProgress,
-  IconButton,
-  Divider,
-  Alert
-} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { Box, Typography, Paper, Card, CardContent, CardActions, Button, Chip, Grid, TextField, InputAdornment, LinearProgress, IconButton, Divider, Alert } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -6371,7 +7062,6 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
-// Extend dayjs with relativeTime plugin
 dayjs.extend(relativeTime);
 
 const ProjectsList = () => {
@@ -6380,7 +7070,7 @@ const ProjectsList = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'PENDING': return 'default';
@@ -6390,136 +7080,63 @@ const ProjectsList = () => {
       default: return 'default';
     }
   };
-  
+
   const fetchProjects = async () => {
     setLoading(true);
     setError('');
-    
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('You must be logged in to view projects');
-      }
-      
+      if (!token) throw new Error('You must be logged in to view projects');
       let url = 'http://localhost:5001/api/projects';
-      if (searchQuery) {
-        url += `?search=${encodeURIComponent(searchQuery)}`;
-      }
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
+      if (searchQuery) url += `?search=${encodeURIComponent(searchQuery)}`;
+      const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch projects');
-      }
-      
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch projects');
       setProjects(data);
-      
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
-  
+
   useEffect(() => {
     fetchProjects();
   }, []);
-  
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-  };
-  
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchProjects();
-  };
-  
-  const handleCreateProject = () => {
-    navigate('/tutor/projects/create');
-  };
-  
-  const handleViewProject = (projectId) => {
-    navigate(`/tutor/projects/${projectId}`);
-  };
-  
-  const handleEditProject = (projectId) => {
-    navigate(`/tutor/projects/${projectId}/edit`);
-  };
-  
+
+  const handleSearchChange = (e) => setSearchQuery(e.target.value);
+  const handleSearch = (e) => { e.preventDefault(); fetchProjects(); };
+  const handleCreateProject = () => navigate('/tutor/projects/create');
+  const handleViewProject = (projectId) => navigate(`/tutor/projects/${projectId}`);
+  const handleEditProject = (projectId) => navigate(`/tutor/projects/${projectId}/edit`);
   const handleDeleteProject = async (projectId) => {
-    if (!window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
-      return;
-    }
-    
+    if (!window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) return;
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('You must be logged in to delete a project');
-      }
-      
+      if (!token) throw new Error('You must be logged in to delete a project');
       const response = await fetch(`http://localhost:5001/api/projects/${projectId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
       const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete project');
-      }
-      
-      // Show success message
-      setError('');
-      
-      // Refresh projects list
+      if (!response.ok) throw new Error(data.error || 'Failed to delete project');
       fetchProjects();
-      
     } catch (err) {
       setError(err.message);
-      // Show error as an alert to ensure user sees it
       alert('Error: ' + err.message);
     }
   };
-  
-  const handleManageTasks = (projectId) => {
-    navigate(`/tutor/projects/${projectId}/tasks`);
-  };
-  
+  const handleManageTasks = (projectId) => navigate(`/tutor/projects/${projectId}/tasks`);
+
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" sx={{ color: '#dd2825' }}>My Projects</Typography>
-        
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCreateProject}
-          sx={{
-            backgroundColor: '#dd2825',
-            color: 'white',
-            '&:hover': {
-              backgroundColor: '#c42020'
-            }
-          }}
-        >
+        <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateProject} sx={{ backgroundColor: '#dd2825', '&:hover': { backgroundColor: '#c42020' } }}>
           Create Project
         </Button>
       </Box>
-      
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
-      
+      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
       <Paper sx={{ p: 2, mb: 3 }}>
         <form onSubmit={handleSearch}>
           <TextField
@@ -6528,46 +7145,22 @@ const ProjectsList = () => {
             value={searchQuery}
             onChange={handleSearchChange}
             InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <InputAdornment position="end">
-                  <Button type="submit" variant="contained" size="small">
-                    Search
-                  </Button>
-                </InputAdornment>
-              )
+              startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+              endAdornment: <InputAdornment position="end"><Button type="submit" variant="contained" size="small">Search</Button></InputAdornment>
             }}
           />
         </form>
       </Paper>
-      
       {loading ? (
         <LinearProgress />
       ) : projects.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6" sx={{ mb: 2 }}>No projects found</Typography>
           <Typography variant="body1" sx={{ mb: 3 }}>
-            {searchQuery 
-              ? "No projects match your search criteria. Try different keywords."
-              : "You haven't created any projects yet. Click 'Create Project' to get started."}
+            {searchQuery ? "No projects match your search criteria. Try different keywords." : "You haven't created any projects yet. Click 'Create Project' to get started."}
           </Typography>
           {!searchQuery && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleCreateProject}
-              sx={{
-                backgroundColor: '#dd2825',
-                color: 'white',
-                '&:hover': {
-                  backgroundColor: '#c42020'
-                }
-              }}
-            >
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateProject} sx={{ backgroundColor: '#dd2825', '&:hover': { backgroundColor: '#c42020' } }}>
               Create Your First Project
             </Button>
           )}
@@ -6576,124 +7169,33 @@ const ProjectsList = () => {
         <Grid container spacing={3}>
           {projects.map(project => (
             <Grid item xs={12} md={6} lg={4} key={project._id}>
-              <Card 
-                sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-                  '&:hover': {
-                    transform: 'translateY(-5px)',
-                    boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
-                  }
-                }}
-              >
+              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out', '&:hover': { transform: 'translateY(-5px)', boxShadow: '0 10px 20px rgba(0,0,0,0.1)' } }}>
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="h6" noWrap sx={{ maxWidth: '70%' }}>
-                      {project.name}
-                    </Typography>
-                    <Chip 
-                      label={project.status.replace('_', ' ')} 
-                      color={getStatusColor(project.status)}
-                      size="small"
-                    />
+                    <Typography variant="h6" noWrap sx={{ maxWidth: '70%' }}>{project.name}</Typography>
+                    <Chip label={project.status.replace('_', ' ')} color={getStatusColor(project.status)} size="small" />
                   </Box>
-                  
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary" 
-                    sx={{ 
-                      mb: 2, 
-                      height: '3em', 
-                      overflow: 'hidden', 
-                      textOverflow: 'ellipsis',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical'
-                    }}
-                  >
-                    {project.description}
-                  </Typography>
-                  
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2, height: '3em', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{project.description}</Typography>
                   <Box sx={{ mb: 2 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>Start:</strong> {dayjs(project.startDate).format('MMM D, YYYY')}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>End:</strong> {dayjs(project.endDate).format('MMM D, YYYY')}
-                    </Typography>
+                    <Typography variant="body2" color="text.secondary"><strong>Start:</strong> {dayjs(project.startDate).format('MMM D, YYYY')}</Typography>
+                    <Typography variant="body2" color="text.secondary"><strong>End:</strong> {dayjs(project.endDate).format('MMM D, YYYY')}</Typography>
                   </Box>
-                  
                   {project.progressPercentage !== undefined && (
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Box sx={{ width: '100%', mr: 1 }}>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={project.progressPercentage} 
-                          sx={{ 
-                            height: 8, 
-                            borderRadius: 5,
-                            backgroundColor: '#e0e0e0'
-                          }}
-                        />
-                      </Box>
-                      <Box>
-                        <Typography variant="body2" color="text.secondary">
-                          {`${Math.round(project.progressPercentage)}%`}
-                        </Typography>
-                      </Box>
+                      <Box sx={{ width: '100%', mr: 1 }}><LinearProgress variant="determinate" value={project.progressPercentage} sx={{ height: 8, borderRadius: 5, backgroundColor: '#e0e0e0' }} /></Box>
+                      <Box><Typography variant="body2" color="text.secondary">{`${Math.round(project.progressPercentage)}%`}</Typography></Box>
                     </Box>
                   )}
-                  
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {project.tags && project.tags.map(tag => (
-                      <Chip 
-                        key={tag} 
-                        label={tag} 
-                        size="small" 
-                        sx={{ backgroundColor: '#f1f1f1' }}
-                      />
-                    ))}
-                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{project.tags && project.tags.map(tag => <Chip key={tag} label={tag} size="small" sx={{ backgroundColor: '#f1f1f1' }} />)}</Box>
                 </CardContent>
-                
                 <Divider />
-                
                 <CardActions sx={{ justifyContent: 'space-between', p: 1 }}>
                   <Box>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleViewProject(project._id)}
-                      title="View Project"
-                    >
-                      <VisibilityIcon />
-                    </IconButton>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleEditProject(project._id)}
-                      title="Edit Project"
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleDeleteProject(project._id)}
-                      title="Delete Project"
-                      color="error"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                    <IconButton size="small" onClick={() => handleViewProject(project._id)} title="View Project"><VisibilityIcon /></IconButton>
+                    <IconButton size="small" onClick={() => handleEditProject(project._id)} title="Edit Project"><EditIcon /></IconButton>
+                    <IconButton size="small" onClick={() => handleDeleteProject(project._id)} title="Delete Project" color="error"><DeleteIcon /></IconButton>
                   </Box>
-                  
-                  <Button
-                    size="small"
-                    startIcon={<AssignmentIcon />}
-                    onClick={() => handleManageTasks(project._id)}
-                    sx={{ color: '#dd2825' }}
-                  >
-                    Manage Tasks
-                  </Button>
+                  <Button size="small" startIcon={<AssignmentIcon />} onClick={() => handleManageTasks(project._id)} sx={{ color: '#dd2825' }}>Manage Tasks</Button>
                 </CardActions>
               </Card>
             </Grid>
@@ -6704,11 +7206,12 @@ const ProjectsList = () => {
   );
 };
 
-export default ProjectsList; 
+export default ProjectsList;
 ================================================================================
 FILE: src\pages\tutor\StudentsList.jsx
 ================================================================================
 
+// src/pages/tutor/StudentsList.jsx
 import { useState, useEffect } from 'react';
 import { 
   Box, 
@@ -6744,6 +7247,7 @@ import {
   Close as CloseIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { fetchStudentsForTutor } from '../../api/classApi';
 
 const StudentsList = () => {
   const navigate = useNavigate();
@@ -6770,8 +7274,7 @@ const StudentsList = () => {
         student.firstName.toLowerCase().includes(lowercasedQuery) ||
         student.lastName.toLowerCase().includes(lowercasedQuery) ||
         student.email.toLowerCase().includes(lowercasedQuery) ||
-        (student.cin && student.cin.toLowerCase().includes(lowercasedQuery)) ||
-        (student.classe && student.classe.toLowerCase().includes(lowercasedQuery))
+        (student.cin && student.cin.toLowerCase().includes(lowercasedQuery))
       );
       setFilteredStudents(filtered);
     }
@@ -6798,42 +7301,10 @@ const StudentsList = () => {
       setLoading(true);
       setError('');
       
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Authentication required');
-      }
-      
-      const response = await fetch('http://localhost:5001/api/users?role=STUDENT', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch students');
-      }
-      
-      const data = await response.json();
-      
-      console.log('Student data sample:', data.length > 0 ? {
-        imageFields: {
-          profilePicture: data[0].profilePicture,
-          avatar: data[0].avatar,
-          profileImage: data[0].profileImage,
-          faceImage: data[0].faceImage
-        }
-      } : 'No students');
+      const data = await fetchStudentsForTutor();
       
       const processedData = data.map(student => {
         const imageUrl = getProfileImageUrl(student);
-        
-        console.log(`Student ${student.firstName}: Image fields:`, {
-          profilePicture: student.profilePicture ? 'exists' : 'missing',
-          faceImage: student.faceImage ? 'exists' : 'missing',  
-          resolvedUrl: imageUrl
-        });
-        
         return {
           ...student,
           displayImage: imageUrl
@@ -6852,7 +7323,7 @@ const StudentsList = () => {
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
-    setPage(0); // Reset to first page when searching
+    setPage(0);
   };
 
   const handleViewDetails = (studentId) => {
@@ -6893,7 +7364,7 @@ const StudentsList = () => {
       <Paper sx={{ p: 2, mb: 3 }}>
         <TextField
           fullWidth
-          placeholder="Search students by name, email, CIN or class..."
+          placeholder="Search students by name, email, or CIN..."
           value={searchQuery}
           onChange={handleSearchChange}
           InputProps={{
@@ -6910,9 +7381,9 @@ const StudentsList = () => {
         <LinearProgress />
       ) : filteredStudents.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h6">No students found</Typography>
+          <Typography variant="h6">No Students Found</Typography>
           <Typography variant="body1" sx={{ mt: 1 }}>
-            {searchQuery ? "No students match your search criteria. Try different keywords." : "No students are currently registered in the system."}
+            {searchQuery ? "No students match your search criteria. Try different keywords." : "You have no students assigned to your classes."}
           </Typography>
         </Paper>
       ) : (
@@ -6924,7 +7395,6 @@ const StudentsList = () => {
                   <TableCell>Student</TableCell>
                   <TableCell>Email</TableCell>
                   <TableCell>CIN</TableCell>
-                  <TableCell>Class</TableCell>
                   <TableCell>Education Level</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell align="right">Actions</TableCell>
@@ -6970,13 +7440,6 @@ const StudentsList = () => {
                       <TableCell>{student.email}</TableCell>
                       <TableCell>{student.cin || 'Not provided'}</TableCell>
                       <TableCell>
-                        {student.classe === '--' ? (
-                          <Chip label="Not assigned" size="small" color="warning" />
-                        ) : (
-                          student.classe || 'Not assigned'
-                        )}
-                      </TableCell>
-                      <TableCell>
                         <Chip 
                           label={student.educationLevel || 'BEGINNER'} 
                           size="small"
@@ -7002,7 +7465,14 @@ const StudentsList = () => {
                             <VisibilityIcon />
                           </IconButton>
                         </Tooltip>
-                     
+                        <Tooltip title="Contact Student">
+                          <IconButton 
+                            onClick={() => handleContactStudent(student.email)}
+                            size="small"
+                          >
+                            <MailIcon />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -7076,7 +7546,6 @@ const StudentsList = () => {
                     size="small"
                     sx={{ mb: 2 }}
                   />
-
                 </Grid>
                 
                 <Grid item xs={12} md={8}>
@@ -7110,11 +7579,7 @@ const StudentsList = () => {
                   <Grid container spacing={2}>
                     <Grid item xs={12} sm={6}>
                       <Typography variant="body2" color="text.secondary">Class</Typography>
-                      {selectedStudent.classe === '--' ? (
-                        <Chip label="Not assigned" size="small" color="warning" />
-                      ) : (
-                        <Typography variant="body1">{selectedStudent.classe}</Typography>
-                      )}
+                      <Typography variant="body1">{selectedStudent.classe?.name || 'Not assigned'}</Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <Typography variant="body2" color="text.secondary">Education Level</Typography>
@@ -7187,7 +7652,7 @@ const StudentsList = () => {
   );
 };
 
-export default StudentsList; 
+export default StudentsList;
 ================================================================================
 FILE: src\pages\tutor\TaskCreate.jsx
 ================================================================================
@@ -7210,6 +7675,7 @@ import { api } from '../../api/axiosConfig'; // Adjust path based on your projec
 
 const TaskCreate = () => {
   const { projectId } = useParams(); // Get projectId from URL
+  console.log('Project ID:', projectId);
   const navigate = useNavigate();
 
   // State for form fields
@@ -7809,34 +8275,134 @@ import {
   Paper,
   Button,
   Alert,
-  LinearProgress
+  LinearProgress,
+  Grid,
+  Card,
+  CardContent,
+  CardActions,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import {
+  fetchTasksByProject,
+  updateTaskStatus,
+} from '../../api/taskApi';
 
 const TasksList = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
+  const [key, setKey] = useState(0); // Force re-render with a key
 
   useEffect(() => {
-    // Placeholder for loading tasks
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-    
-    return () => clearTimeout(timer);
+    const fetchTasks = async () => {
+      try {
+        setLoading(true);
+        console.log('Fetching tasks for project:', projectId);
+        const tasksData = await fetchTasksByProject(projectId);
+        console.log('Tasks fetched:', tasksData);
+        if (Array.isArray(tasksData)) {
+          setTasks(tasksData);
+          setKey((prev) => prev + 1); // Update key to force re-render
+        } else {
+          console.warn('Tasks data is not an array:', tasksData);
+          setTasks([]);
+          setKey((prev) => prev + 1); // Update key on empty data
+        }
+      } catch (err) {
+        console.error('Error fetching tasks:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasks();
   }, [projectId]);
 
+  const groupTasksByStatus = (tasks) => {
+    return {
+      TODO: tasks.filter((task) => task.status === 'TODO'),
+      IN_PROGRESS: tasks.filter((task) => task.status === 'IN_PROGRESS'),
+      COMPLETED: tasks.filter((task) => task.status === 'COMPLETED'),
+    };
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'TODO':
+        return '#1976d2'; // Blue
+      case 'IN_PROGRESS':
+        return '#f57c00'; // Orange
+      case 'COMPLETED':
+        return '#388e3c'; // Green
+      default:
+        return '#dd2825'; // Red as fallback
+    }
+  };
+
+  const onDragEnd = async (result) => {
+    const { destination, source, draggableId } = result;
+
+    console.log('Drag end:', { destination, source, draggableId });
+    console.log('Current tasks state:', tasks);
+
+    if (!destination) {
+      console.log('No destination, drag cancelled');
+      return;
+    }
+
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      console.log('Same position, no update needed');
+      return;
+    }
+
+    const newStatus = destination.droppableId;
+    const taskId = draggableId;
+
+    // Verify task exists in current state
+    const taskToMove = tasks.find((task) => task._id.toString() === taskId);
+    if (!taskToMove) {
+      console.error(`Task with id ${taskId} not found in state`);
+      setError(`Task with id ${taskId} not found`);
+      return;
+    }
+
+    console.log(`Dragging task ${taskId} from ${source.droppableId} to ${newStatus}`);
+
+    // Optimistically update the UI
+    const updatedTasks = tasks.map((task) =>
+      task._id.toString() === taskId ? { ...task, status: newStatus } : task
+    );
+    setTasks(updatedTasks);
+    setKey((prev) => prev + 1); // Force re-render
+
+    try {
+      await updateTaskStatus(taskId, newStatus);
+      console.log(`Task ${taskId} status updated to ${newStatus}`);
+    } catch (err) {
+      console.error('Error updating task status:', err);
+      setError('Failed to update task status');
+      // Revert the UI change if the API call fails
+      const revertedTasks = tasks.map((task) =>
+        task._id.toString() === taskId ? { ...task, status: source.droppableId } : task
+      );
+      setTasks(revertedTasks);
+      setKey((prev) => prev + 1); // Force re-render on revert
+    }
+  };
+
   const handleBack = () => {
-    navigate(`/tutor/projects/${projectId}`);
+    navigate(`/tutor/project/${projectId}`);
   };
 
   const handleCreateTask = () => {
-    navigate(`/tutor/projects/${projectId}/tasks/create`);
+    navigate(`/tutor/projects/${projectId}/tasks/create`); // Updated to match route
   };
 
   if (loading) {
@@ -7848,19 +8414,32 @@ const TasksList = () => {
     );
   }
 
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
+
+  const groupedTasks = groupTasksByStatus(tasks);
+
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3 }} key={key}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Button 
+          <Button
             startIcon={<ArrowBackIcon />}
             onClick={handleBack}
+            variant="outlined"
+            sx={{ color: '#dd2825', borderColor: '#dd2825' }}
           >
             Back to Project
           </Button>
-          <Typography variant="h5" sx={{ color: '#dd2825' }}>Tasks Management</Typography>
+          <Typography variant="h5" sx={{ color: '#dd2825' }}>
+            Tasks Management
+          </Typography>
         </Box>
-        
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -7869,25 +8448,111 @@ const TasksList = () => {
             backgroundColor: '#dd2825',
             color: 'white',
             '&:hover': {
-              backgroundColor: '#c42020'
-            }
+              backgroundColor: '#c42020',
+            },
           }}
         >
           Create Task
         </Button>
       </Box>
-
-      <Paper sx={{ p: 4, textAlign: 'center' }}>
-        <Typography variant="h6">Task Management Coming Soon</Typography>
-        <Typography paragraph sx={{ mt: 2 }}>
-          This feature is currently under development. You'll be able to create and manage tasks for this project soon.
+      <Paper sx={{ p: 4, borderRadius: 2 }}>
+        <Typography variant="h6" sx={{ color: '#dd2825', mb: 3 }}>
+          Kanban Board
         </Typography>
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Grid container spacing={3}>
+            {['TODO', 'IN_PROGRESS', 'COMPLETED'].map((status) => (
+              <Grid item xs={12} md={4} key={status}>
+                <Droppable droppableId={status}>
+                  {(provided) => (
+                    <Box
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      sx={{
+                        minHeight: '300px',
+                        backgroundColor: '#f5f5f5',
+                        borderRadius: 2,
+                        padding: 2,
+                      }}
+                    >
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          color: '#dd2825',
+                          fontWeight: 'bold',
+                          mb: 2,
+                          textAlign: 'center',
+                        }}
+                      >
+                        {status} ({groupedTasks[status].length})
+                      </Typography>
+                      {groupedTasks[status].map((task, index) => {
+                        console.log(`Rendering task ${task._id} in ${status} column`);
+                        return (
+                          <Draggable
+                            key={task._id.toString()}
+                            draggableId={task._id.toString()}
+                            index={index}
+                          >
+                            {(provided) => (
+                              <Card
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                sx={{
+                                  mb: 2,
+                                  backgroundColor: '#fff',
+                                  borderLeft: `4px solid ${getStatusColor(task.status)}`,
+                                  cursor: 'grab',
+                                  '&:hover': {
+                                    boxShadow: 3,
+                                  },
+                                }}
+                              >
+                                <CardContent>
+                                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                                    {task.title}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Status: {task.status}
+                                  </Typography>
+                                  <Typography variant="caption">
+                                    Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}
+                                  </Typography>
+                                  {task.assignedTo && (
+                                    <Typography variant="caption">
+                                      Assigned: {task.assignedTo.firstName} {task.assignedTo.lastName}
+                                    </Typography>
+                                  )}
+                                </CardContent>
+                                <CardActions sx={{ justifyContent: 'flex-end' }}>
+                                  <Button
+                                    size="small"
+                                    onClick={() => navigate(`/tutor/tasks/${task._id}`)}
+                                    sx={{ color: '#dd2825' }}
+                                  >
+                                    View
+                                  </Button>
+                                </CardActions>
+                              </Card>
+                            )}
+                          </Draggable>
+                        );
+                      })}
+                      {provided.placeholder}
+                    </Box>
+                  )}
+                </Droppable>
+              </Grid>
+            ))}
+          </Grid>
+        </DragDropContext>
       </Paper>
     </Box>
   );
 };
 
-export default TasksList; 
+export default TasksList;
 ================================================================================
 FILE: src\pages\VerifyEmail.jsx
 ================================================================================
@@ -7981,19 +8646,19 @@ FILE: src\utils\errorHandler.js
 
 // src/utils/errorHandler.js
 export const handleApiError = (error) => {
-    if (error.response) {
-      // Server responded with error
-      const message = error.response.data?.message || 'Server error occurred';
-      const status = error.response.status;
-      return { message, status };
-    } else if (error.request) {
-      // Request made but no response
-      return { message: 'No response from server', status: 503 };
-    } else {
-      // Request setup error
-      return { message: 'Failed to make request', status: 500 };
-    }
-  };
+  if (error.response) {
+    // Server responded with error
+    const message = error.response.data?.message || 'Server error occurred';
+    const status = error.response.status;
+    return { message, status };
+  } else if (error.request) {
+    // Request made but no response
+    return { message: 'No response from server', status: 503 };
+  } else {
+    // Request setup error
+    return { message: 'Failed to make request', status: 500 };
+  }
+};
 ================================================================================
 FILE: src\config\apiConfig.js
 ================================================================================
@@ -8037,7 +8702,9 @@ import StudentProjectDetails from "./pages/student/ProjectDetails";
 import StudentTasksList from "./pages/student/TasksList";
 import StudentTaskDetails from "./pages/student/TaskDetails";
 import StudentsList from './pages/tutor/StudentsList';
-
+import ClassesList from './pages/tutor/ClassesList'; // New import pages/tutor/ClassesList
+import ClassDetails from './pages/tutor/components/ClassDetails'; // New import
+import ClassesManagement from './pages/admin/ClassesManagement'; // New import
 
 const theme = createTheme({
   palette: {
@@ -8095,7 +8762,6 @@ const App = () => (
             <Route path="/auth-transfer" element={<AuthTransfer />} />
             <Route path="/verify-email/:token" element={<VerifyEmail />} />
 
-            
             {/* Admin Dashboard Routes */}
             <Route path="/admin" element={<DashboardLayout />}>
               <Route index element={<Navigate to="/admin/users" replace />} />
@@ -8103,7 +8769,8 @@ const App = () => (
               <Route path="users" element={<UsersList />} />
               <Route path="users/students" element={<UsersList />} />
               <Route path="users/tutors" element={<UsersList />} />
-              <Route path="submit-task" element={<SubmitTask />} /> 
+              <Route path="submit-task" element={<SubmitTask />} />
+              <Route path="classes" element={<ClassesManagement />} /> {/* New route */}
             </Route>
 
             {/* Student Dashboard Routes */}
@@ -8132,7 +8799,12 @@ const App = () => (
               <Route path="projects/:projectId/tasks" element={<TasksList />} />
               <Route path="projects/:projectId/tasks/create" element={<TaskCreate />} />
               <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetails />} />
+              
               <Route path="projects/:projectId/tasks/:taskId/edit" element={<TaskEdit />} />
+              <Route path="classes" element={<ClassesList />} /> {/* New route */}
+              <Route path="classes/:classId" element={<ClassDetails />} /> {/* New route */}
+              <Route path="assignments" element={<div>Assignments Page</div>} /> {/* New route */}
+              <Route path="groups" element={<div>Groups Page</div>} /> {/* New route */}
             </Route>
 
             <Route path="*" element={<NotFound />} />
@@ -8162,6 +8834,7 @@ createRoot(document.getElementById('root')).render(
 ================================================================================
 FILE: src\App.css
 ================================================================================
+
 
 #root {
   max-width: 1280px;
@@ -8279,6 +8952,7 @@ FILE: package.json
     "face-api.js": "^0.22.2",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
+    "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.30.0",
     "sweetalert2": "^11.17.2"

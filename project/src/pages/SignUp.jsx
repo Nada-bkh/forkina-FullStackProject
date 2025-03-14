@@ -269,7 +269,6 @@ const SignUp = () => {
               >
                 <MenuItem value="STUDENT">Student</MenuItem>
                 <MenuItem value="TUTOR">Tutor</MenuItem>
-
               </Select>
             </FormControl>
             
@@ -301,34 +300,15 @@ const SignUp = () => {
                   helperText="Votre numéro d'identité est requis pour l'inscription"
                 />
                 
-            
-              </>
-            )}
-                    {formData.role === 'TUTOR' && (
-              <>
-                <FormControl fullWidth sx={{ mt: 2 }}>
-                <InputLabel>Department</InputLabel>
-    <Select
-      name="departement"
-      value={formData.departement}
-      onChange={handleChange}
-      required
-    >
-      <MenuItem value="SE">Software Engineering</MenuItem>
-      <MenuItem value="DS">Artificial Intelligence & Data Science</MenuItem>
-      <MenuItem value="NIDS">Network Infrastructure & Data Security</MenuItem>
-      <MenuItem value="ArcTIC">IT Architecture & Cloud Computing</MenuItem>
-      <MenuItem value="Gamix">Gaming & Immersive eXperience</MenuItem>
-      <MenuItem value="InFini">Financial Computing & Engineering</MenuItem>
-      <MenuItem value="SLEAM">Embedded, Ambient & Mobile Systems</MenuItem>
-      <MenuItem value="SAE">Software Architecture Engineering</MenuItem>
-      <MenuItem value="ERP">Enterprise Resource Planning & BI</MenuItem>
-      <MenuItem value="SIM">Information & Mobile Systems</MenuItem>
-      <MenuItem value="TWIN">Web & Internet Technologies</MenuItem>
-    </Select>
-                </FormControl>
-                
-                
+                <TextField
+                  margin="normal"
+                  fullWidth
+                  name="classe"
+                  label="Classe"
+                  value="--"
+                  disabled
+                  helperText="Votre classe sera attribuée par l'administrateur"
+                />
               </>
             )}
 

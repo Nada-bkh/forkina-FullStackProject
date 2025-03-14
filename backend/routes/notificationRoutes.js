@@ -1,12 +1,12 @@
 // routes/notificationRoutes.js
 const express = require('express');
 const router = express.Router();
+const authMiddleware = require('../middlewares/authMiddleware');
 const notificationController = require('../controllers/notificationController');
 
-router.post('/', notificationController.createNotification);
-router.get('/', notificationController.getAllNotifications);
-router.get('/:id', notificationController.getNotificationById);
-router.put('/:id', notificationController.updateNotification);
-router.delete('/:id', notificationController.deleteNotification);
+router.use(authMiddleware);
+
+router.get('/', notificationController.getUserNotifications);
+router.put('/:id/read', notificationController.markNotificationAsRead);
 
 module.exports = router;

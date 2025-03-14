@@ -24,7 +24,7 @@ const projectSchema = new Schema(
     tutorRef: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true
+      required:false
     },
     teamRef: {
       type: Schema.Types.ObjectId,

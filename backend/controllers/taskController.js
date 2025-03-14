@@ -4,24 +4,19 @@ const mongoose = require('mongoose');
 
 exports.createTask = async (req, res) => {
   try {
-    console.log('Creating task with data:', req.body);
     const { title, description, status, priority, assignedTo, dueDate, startDate, estimatedHours, projectRef, milestoneRef } = req.body;
-    
+
     const project = await Project.findById(projectRef);
-    if (!project) {
-      console.log('Project not found:', projectRef);
-      return res.status(404).json({ error: 'Project not found' });
-    }
-    
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
     const isMember = project.members.some(m => m.user.toString() === req.user.id);
-    const isTutor = project.tutorRef.toString() === req.user.id;
+    const isTutor = project.tutorRef && project.tutorRef.toString() === req.user.id;
     const isAdmin = req.user.role === 'ADMIN';
-    
+
     if (!isMember && !isTutor && !isAdmin) {
-      console.log('User does not have permission to create task');
       return res.status(403).json({ error: 'You do not have permission to create tasks in this project' });
     }
-    
+
     const task = new Task({
       title,
       description,
@@ -35,17 +30,11 @@ exports.createTask = async (req, res) => {
       projectRef,
       milestoneRef
     });
-    
-    console.log('Task before save:', task);
+
     await task.save();
-    console.log('Task after save:', task);
-    
     await task.populate('createdBy', 'firstName lastName email');
-    if (assignedTo) {
-      await task.populate('assignedTo', 'firstName lastName email');
-    }
-    console.log('Task after populate:', task);
-    
+    if (assignedTo) await task.populate('assignedTo', 'firstName lastName email');
+
     return res.status(201).json(task);
   } catch (err) {
     console.error('Error creating task:', err);
@@ -57,7 +46,7 @@ exports.getAllTasks = async (req, res) => {
   try {
     const { projectId, status, priority, assignedTo, search } = req.query;
     const filter = {};
-    
+
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
     if (assignedTo) filter.assignedTo = assignedTo;
@@ -68,26 +57,24 @@ exports.getAllTasks = async (req, res) => {
         { tags: { $regex: search, $options: 'i' } }
       ];
     }
-    
-    const userProjects = await Project.find({ 'members.user': req.user.id }).select('_id');
-    const projectIds = userProjects.map(p => p._id);
-    
-    if (projectId) {
-      const projectObjectId = mongoose.Types.ObjectId(projectId);
-      if (!projectIds.some(id => id.equals(projectObjectId))) {
-        return res.status(403).json({ error: 'You do not have access to this project' });
-      }
-      filter.projectRef = projectId;
-    } else {
-      filter.projectRef = { $in: projectIds };
+
+    if (req.user.role === 'STUDENT') {
+      const userProjects = await Project.find({ 'members.user': req.user.id }).select('_id');
+      filter.projectRef = { $in: userProjects.map(p => p._id) };
+    } else if (req.user.role === 'TUTOR') {
+      const tutorProjects = await Project.find({ tutorRef: req.user.id }).select('_id');
+      filter.projectRef = { $in: tutorProjects.map(p => p._id) };
     }
-    
+    // Admins see all tasks (no projectRef filter)
+
+    if (projectId) filter.projectRef = projectId;
+
     const tasks = await Task.find(filter)
-      .populate('createdBy', 'firstName lastName email')
-      .populate('assignedTo', 'firstName lastName email')
-      .populate('projectRef', 'name status')
-      .sort({ createdAt: -1 });
-      
+        .populate('createdBy', 'firstName lastName email')
+        .populate('assignedTo', 'firstName lastName email')
+        .populate('projectRef', 'name status')
+        .sort({ createdAt: -1 });
+
     return res.json(tasks);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -97,22 +84,22 @@ exports.getAllTasks = async (req, res) => {
 exports.getTaskById = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id)
-      .populate('createdBy', 'firstName lastName email')
-      .populate('assignedTo', 'firstName lastName email')
-      .populate('projectRef', 'name status members tutorRef')
-      .populate({ path: 'comments.author', select: 'firstName lastName email' });
-      
+        .populate('createdBy', 'firstName lastName email')
+        .populate('assignedTo', 'firstName lastName email')
+        .populate('projectRef', 'name status members tutorRef')
+        .populate({ path: 'comments.author', select: 'firstName lastName email' });
+
     if (!task) return res.status(404).json({ error: 'Task not found' });
-    
+
     const project = await Project.findById(task.projectRef);
     if (!project) return res.status(404).json({ error: 'Associated project not found' });
-    
+
     const isMember = project.members.some(m => m.user.toString() === req.user.id);
-    const isTutor = project.tutorRef.toString() === req.user.id;
+    const isTutor = project.tutorRef && project.tutorRef.toString() === req.user.id;
     const isAdmin = req.user.role === 'ADMIN';
-    
+
     if (!isMember && !isTutor && !isAdmin) return res.status(403).json({ error: 'You do not have access to this task' });
-    
+
     return res.json(task);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -122,22 +109,24 @@ exports.getTaskById = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     const { title, description, status, priority, assignedTo, dueDate, startDate, completedDate, estimatedHours, actualHours, tags } = req.body;
-    
+
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ error: 'Task not found' });
-    
+
     const project = await Project.findById(task.projectRef);
     if (!project) return res.status(404).json({ error: 'Associated project not found' });
-    
-    const isTutor = project.tutorRef.toString() === req.user.id;
+
+    const isTutor = project.tutorRef && project.tutorRef.toString() === req.user.id;
     const isCreator = task.createdBy.toString() === req.user.id;
     const isAssigned = task.assignedTo && task.assignedTo.toString() === req.user.id;
     const isAdmin = req.user.role === 'ADMIN';
-    
-    if (!isAssigned && !isCreator && !isTutor && !isAdmin) return res.status(403).json({ error: 'You do not have permission to update this task' });
-    
+
+    if (!isAssigned && !isCreator && !isTutor && !isAdmin) {
+      return res.status(403).json({ error: 'You do not have permission to update this task' });
+    }
+
     if (status === 'COMPLETED' && task.status !== 'COMPLETED') task.completedDate = new Date();
-    
+
     if (title !== undefined) task.title = title;
     if (description !== undefined) task.description = description;
     if (status !== undefined) task.status = status;
@@ -148,14 +137,14 @@ exports.updateTask = async (req, res) => {
     if (estimatedHours !== undefined) task.estimatedHours = estimatedHours;
     if (actualHours !== undefined) task.actualHours = actualHours;
     if (tags !== undefined) task.tags = tags;
-    
+
     await task.save();
     await project.updateProgress();
-    
+
     await task.populate('createdBy', 'firstName lastName email');
     await task.populate('assignedTo', 'firstName lastName email');
     await task.populate('projectRef', 'name status');
-    
+
     return res.json(task);
   } catch (err) {
     return res.status(400).json({ error: err.message });
@@ -166,19 +155,21 @@ exports.deleteTask = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ error: 'Task not found' });
-    
+
     const project = await Project.findById(task.projectRef);
     if (!project) return res.status(404).json({ error: 'Associated project not found' });
-    
-    const isTutor = project.tutorRef.toString() === req.user.id;
+
+    const isTutor = project.tutorRef && project.tutorRef.toString() === req.user.id;
     const isCreator = task.createdBy.toString() === req.user.id;
     const isAdmin = req.user.role === 'ADMIN';
-    
-    if (!isCreator && !isTutor && !isAdmin) return res.status(403).json({ error: 'You do not have permission to delete this task' });
-    
+
+    if (!isCreator && !isTutor && !isAdmin) {
+      return res.status(403).json({ error: 'You do not have permission to delete this task' });
+    }
+
     await Task.findByIdAndDelete(req.params.id);
     await project.updateProgress();
-    
+
     return res.json({ message: 'Task deleted successfully' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -270,36 +261,25 @@ exports.getTutorTasks = async (req, res) => {
 exports.getTasksByProject = async (req, res) => {
   try {
     const { projectId } = req.params;
-    console.log('Fetching tasks for projectId:', projectId);
-
-    // Validate projectId
     if (!mongoose.Types.ObjectId.isValid(projectId)) {
-      console.log('Invalid projectId format:', projectId);
       return res.status(400).json({ error: 'Invalid project ID format' });
     }
 
-    // Check if the user has access to the project
     const project = await Project.findById(projectId);
-    if (!project) {
-      console.log('Project not found:', projectId);
-      return res.status(404).json({ error: 'Project not found' });
-    }
+    if (!project) return res.status(404).json({ error: 'Project not found' });
 
     const isMember = project.members.some(m => m.user.toString() === req.user.id);
     const isTutor = project.tutorRef && project.tutorRef.toString() === req.user.id;
     const isAdmin = req.user.role === 'ADMIN';
 
     if (!isMember && !isTutor && !isAdmin) {
-      console.log('User does not have permission for project:', projectId, req.user.id);
       return res.status(403).json({ error: 'You do not have permission to view tasks for this project' });
     }
 
-    // Fetch tasks
     const tasks = await Task.find({ projectRef: projectId })
-      .populate('createdBy', 'firstName lastName email')
-      .populate('assignedTo', 'firstName lastName email')
-      .populate('projectRef', 'name status');
-    console.log('Tasks fetched successfully:', tasks.length);
+        .populate('createdBy', 'firstName lastName email')
+        .populate('assignedTo', 'firstName lastName email')
+        .populate('projectRef', 'name status');
 
     return res.json(tasks);
   } catch (err) {

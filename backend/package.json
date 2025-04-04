@@ -8,6 +8,7 @@
         "dev": "nodemon app.js"
     },
     "dependencies": {
+        "axios": "^1.8.4",
         "bcryptjs": "^2.4.3",
         "canvas": "^3.1.0",
         "connect-mongo": "^5.1.0",

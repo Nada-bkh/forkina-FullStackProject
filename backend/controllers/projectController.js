@@ -1,18 +1,27 @@
-// controllers/projectController.js
 const Project = require('../models/projectModel');
 const User = require('../models/userModel');
 const Task = require('../models/taskModel');
+const Class = require('../models/classModel');
+const Team = require('../models/teamModel');
+const { Types} = require("mongoose");
+const axios = require('axios');
 
 exports.createProject = async (req, res) => {
   try {
-    const { name, description, startDate, endDate, tags, status } = req.body;
+    const { name, description, startDate, endDate, tags, status, classIds } = req.body;
 
-    // Ensure the creator is a tutor or admin (unchanged)
     if (req.user.role !== 'TUTOR' && req.user.role !== 'ADMIN') {
       return res.status(403).json({ message: 'Only tutors and admins can create projects' });
     }
 
-    // Create new project (admins can create too, no change needed)
+    // Validate classIds if provided
+    if (classIds && Array.isArray(classIds)) {
+      const classes = await Class.find({ _id: { $in: classIds } });
+      if (classes.length !== classIds.length) {
+        return res.status(400).json({ message: 'One or more class IDs are invalid' });
+      }
+    }
+
     const project = new Project({
       name,
       description,
@@ -20,15 +29,17 @@ exports.createProject = async (req, res) => {
       endDate,
       tags: tags || [],
       status: status || 'PENDING',
-      tutorRef: req.user.role === 'TUTOR' ? req.user.id : null, // Admins don’t need to be tutorRef
-      members: req.user.role === 'TUTOR' ? [{ user: req.user.id, role: 'TUTOR' }] : []
+      tutorRef: req.user.role === 'TUTOR' ? req.user.id : null,
+      members: req.user.role === 'TUTOR' ? [{ user: req.user.id, role: 'TUTOR' }] : [],
+      classes: classIds || [],
     });
 
-    console.log('Creating project with data:', { name, description, startDate, endDate, tags, status, tutorRef: project.tutorRef });
+    console.log('Creating project with data:', { name, description, startDate, endDate, tags, status, tutorRef: project.tutorRef, classes: project.classes });
     await project.save();
 
     await project.populate('tutorRef', 'firstName lastName email');
     await project.populate('members.user', 'firstName lastName email');
+    await project.populate('classes', 'name description');
 
     return res.status(201).json(project);
   } catch (err) {
@@ -37,6 +48,7 @@ exports.createProject = async (req, res) => {
   }
 };
 
+// backend/controllers/projectController.js (from previous response)
 exports.getAllProjects = async (req, res) => {
   try {
     const { status, tutor, search } = req.query;
@@ -52,41 +64,77 @@ exports.getAllProjects = async (req, res) => {
       ];
     }
 
-    // Students see only their projects, tutors/admins see all (modified)
     if (req.user.role === 'STUDENT') {
-      filter['members.user'] = req.user.id;
+      console.log('Student user ID:', req.user.id);
+      const user = await User.findById(req.user.id).select('classe');
+      console.log('User class:', user ? user.classe : 'No class');
+
+      const userId = Types.ObjectId(req.user.id);
+      const teams = await Team.find({ 'members.user': userId });
+      const teamIds = teams.map(team => team._id);
+      console.log('Student teams:', teams);
+      console.log('Team IDs:', teamIds);
+
+      filter.$or = [];
+      if (user && user.classe) {
+        filter.$or.push({ classes: user.classe });
+      }
+      if (teamIds.length > 0) {
+        filter.$or.push({ teamRef: { $in: teamIds } });
+      }
+
+      console.log('Filter for student:', filter);
+
+      if (filter.$or.length === 0) {
+        console.log('No class or team found for student, returning empty array');
+        return res.status(200).json([]);
+      }
     } else if (req.user.role === 'TUTOR') {
-      filter.tutorRef = req.user.id; // Tutors see only their projects
+      filter.tutorRef = req.user.id;
     }
-    // Admins see all projects (no filter added)
 
     const projects = await Project.find(filter)
         .populate('tutorRef', 'firstName lastName email')
         .populate('members.user', 'firstName lastName email userRole')
         .populate('teamRef')
+        .populate('classes', 'name description')
         .sort({ createdAt: -1 });
 
+    console.log('Projects found for student:', projects);
     return res.json(projects);
   } catch (err) {
+    console.error('Error in getAllProjects:', err);
     return res.status(500).json({ error: err.message });
   }
 };
-
+// backend/controllers/projectController.js
 exports.getProjectById = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
         .populate('tutorRef', 'firstName lastName email')
         .populate('members.user', 'firstName lastName email userRole')
-        .populate('teamRef');
+        .populate('teamRef')
+        .populate('classes', 'name description');
 
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
-    // Admins have unrestricted access (modified)
-    const isMember = project.members.some(m => m.user._id.toString() === req.user.id);
-    const isTutor = project.tutorRef && project.tutorRef._id.toString() === req.user.id;
-    const isAdmin = req.user.role === 'ADMIN';
+    // Access control
+    let hasAccess = false;
+    if (req.user.role === 'ADMIN') {
+      hasAccess = true;
+    } else if (req.user.role === 'TUTOR' && project.tutorRef && project.tutorRef.toString() === req.user.id) {
+      hasAccess = true;
+    } else if (req.user.role === 'STUDENT') {
+      const user = await User.findById(req.user.id).select('classe');
+      if (
+          (user && user.classe && project.classes.some(cls => cls.toString() === user.classe.toString())) ||
+          (project.teamRef && project.teamRef.members.some(member => member.user.toString() === req.user.id))
+      ) {
+        hasAccess = true;
+      }
+    }
 
-    if (!isMember && !isTutor && !isAdmin) {
+    if (!hasAccess) {
       return res.status(403).json({ error: 'You do not have access to this project' });
     }
 
@@ -95,11 +143,10 @@ exports.getProjectById = async (req, res) => {
         .populate('createdBy', 'firstName lastName email');
 
     return res.json({ project, tasks });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
-
 exports.updateProject = async (req, res) => {
   try {
     const { name, description, status, startDate, endDate, tags } = req.body;
@@ -107,11 +154,20 @@ exports.updateProject = async (req, res) => {
     const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
-    // Admins can update any project (modified)
-    const isTutor = project.tutorRef && project.tutorRef.toString() === req.user.id;
-    const isAdmin = req.user.role === 'ADMIN';
+    // Access control
+    let hasAccess = false;
+    if (req.user.role === 'ADMIN') {
+      hasAccess = true;
+    } else if (req.user.role === 'TUTOR' && project.tutorRef && project.tutorRef.toString() === req.user.id) {
+      hasAccess = true;
+    } else if (req.user.role === 'STUDENT') {
+      const user = await User.findById(req.user.id).select('classe');
+      if (user && user.classe && project.classes.some(cls => cls.toString() === user.classe.toString())) {
+        hasAccess = true;
+      }
+    }
 
-    if (!isTutor && !isAdmin) {
+    if (!hasAccess) {
       return res.status(403).json({ error: 'You do not have permission to update this project' });
     }
 
@@ -131,13 +187,11 @@ exports.updateProject = async (req, res) => {
     return res.status(400).json({ error: err.message });
   }
 };
-
 exports.deleteProject = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
-    // Admins can delete any project (modified)
     const isTutor = project.tutorRef && project.tutorRef.toString() === req.user.id;
     const isAdmin = req.user.role === 'ADMIN';
 
@@ -154,7 +208,6 @@ exports.deleteProject = async (req, res) => {
   }
 };
 
-// Similar changes for addProjectMember and removeProjectMember
 exports.addProjectMember = async (req, res) => {
   try {
     const { userId, role } = req.body;
@@ -210,27 +263,23 @@ exports.removeProjectMember = async (req, res) => {
   }
 };
 
-// getProjectStats (no change needed, admins already have access via getProjectById)
-// Get project statistics
 exports.getProjectStats = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
     if (!project) {
       return res.status(404).json({ error: 'Project not found' });
     }
-    
-    // Count tasks by status
+
     const tasks = await Task.find({ projectRef: project._id });
-    
+
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(t => t.status === 'COMPLETED').length;
     const inProgressTasks = tasks.filter(t => t.status === 'IN_PROGRESS').length;
     const todoTasks = tasks.filter(t => t.status === 'TODO').length;
     const reviewTasks = tasks.filter(t => t.status === 'REVIEW').length;
-    
-    // Update project progress
+
     await project.updateProgress();
-    
+
     return res.json({
       totalTasks,
       completedTasks,
@@ -242,5 +291,325 @@ exports.getProjectStats = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
+  }
+};
+
+exports.assignClassesToProject = async (req, res) => {
+  try {
+    const { projectId, classIds } = req.body;
+    console.log('Received payload:', { projectId, classIds });
+
+    if (!projectId || !Types.ObjectId.isValid(projectId)) {
+      return res.status(400).json({ error: 'Invalid project ID' });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    const isTutor = project.tutorRef && project.tutorRef.toString() === req.user.id;
+    const isAdmin = req.user.role === 'ADMIN';
+
+    if (!isTutor && !isAdmin) {
+      return res.status(403).json({ error: 'You do not have permission to assign classes to this project' });
+    }
+
+    // Validate classIds and fetch classes
+    let classes = [];
+    if (Array.isArray(classIds) && classIds.length > 0) {
+      classes = await Class.find({ _id: { $in: classIds } });
+      if (classes.length !== classIds.length) {
+        const invalidIds = classIds.filter(id => !classes.some(cls => cls._id.toString() === id));
+        return res.status(400).json({ message: 'One or more class IDs are invalid', invalidIds });
+      }
+      project.classes = classIds;
+    } else {
+      project.classes = [];
+    }
+
+    await project.save({ validateBeforeSave: true });
+    console.log('Project saved with updated classes:', project.toObject());
+
+    const updatedProject = await Project.findById(projectId)
+        .populate('classes', 'name description')
+        .populate('members.user', 'firstName lastName email');
+
+    return res.json(updatedProject);
+  } catch (err) {
+    console.error('Error in assignClassesToProject:', err);
+    return res.status(400).json({ error: err.message });
+  }
+};
+const calculatePredictedCompletion = async (projectId) => {
+  console.log(`Starting calculatePredictedCompletion for projectId: ${projectId}`);
+
+  // Validate project ID
+  if (!Types.ObjectId.isValid(projectId)) {
+    console.error(`Invalid projectId: ${projectId}`);
+    throw new Error('Invalid project ID');
+  }
+
+  // Fetch the project
+  const project = await Project.findById(projectId);
+  if (!project) {
+    console.error(`Project not found for projectId: ${projectId}`);
+    throw new Error('Project not found');
+  }
+
+  // Check if the project is already completed
+  if (project.progressPercentage === 100) {
+    console.log(`Project ${projectId} is already completed. No need for prediction.`);
+    return new Date().toISOString(); // Return current date as completion date
+  }
+
+  // Check if there's enough progress history for prediction
+  if (!project.progressHistory || project.progressHistory.length < 2) {
+    console.log(`Project ${projectId} has insufficient progress history: ${project.progressHistory?.length || 0} entries`);
+    return null; // Return null if insufficient data
+  }
+
+  // Validate progress history format
+  const isValidHistory = project.progressHistory.every(entry => {
+    const date = new Date(entry.date);
+    const isValidDate = !isNaN(date.getTime());
+    const isValidProgress = typeof entry.progress === 'number' && entry.progress >= 0 && entry.progress <= 100;
+    return isValidDate && isValidProgress;
+  });
+
+  if (!isValidHistory) {
+    console.error(`Project ${projectId} has invalid progress history format:`, project.progressHistory);
+    throw new Error('Invalid progress history format');
+  }
+
+  // Call the AI service
+  try {
+    console.log(`Sending request to AI service for project ${projectId}:`, project.progressHistory);
+    const response = await axios.post('http://localhost:5000/forecast', {
+      progressHistory: project.progressHistory
+    }, {
+      timeout: 10000
+    });
+
+    console.log(`Received response from AI service for project ${projectId}:`, response.data);
+    if (!response.data || typeof response.data.predictedCompletionDate === 'undefined') {
+      throw new Error('Invalid response from AI service');
+    }
+
+    return response.data.predictedCompletionDate;
+  } catch (error) {
+    console.error(`Failed to get predicted completion for project ${projectId}:`, {
+      message: error.message,
+      response: error.response ? { status: error.response.status, data: error.response.data } : 'No response data'
+    });
+    throw new Error('Failed to get predicted completion from AI service: ' + error.message);
+  }
+};
+const identifyRiskAlerts = async (projectId) => {
+  const tasks = await Task.find({ projectRef: projectId });
+  const overdueTasks = tasks.filter(task => task.status !== 'COMPLETED' && new Date(task.dueDate) < new Date());
+  if (overdueTasks.length > 0) {
+    return `Warning: ${overdueTasks.length} task(s) are overdue.`;
+  }
+  return null;
+};
+exports.getPredictedCompletion = async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.projectId);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // If project is already completed, return the end date
+    if (project.progressPercentage === 100) {
+      return res.json({
+        predictedCompletionDate: project.endDate ? project.endDate.toISOString() : null,
+        message: 'Project is complete'
+      });
+    }
+
+    // Validate progress history before calling AI service
+    if (!project.progressHistory || project.progressHistory.length < 2) {
+      return res.json({
+        predictedCompletionDate: null,
+        message: 'Insufficient data for prediction'
+      });
+    }
+
+    // Call the AI service with timeout
+    try {
+      const response = await axios.post('http://localhost:5000/forecast', {
+        progressHistory: project.progressHistory
+      }, {
+        timeout: 5000 // 5 second timeout to prevent long hanging requests
+      });
+
+      // Handle AI service response
+      return res.json({
+        predictedCompletionDate: response.data.predictedCompletionDate,
+        message: response.data.message || null
+      });
+    } catch (aiError) {
+      console.error('AI service error:', aiError.message);
+
+      // Return a graceful fallback response instead of an error
+      return res.json({
+        predictedCompletionDate: null,
+        message: 'Prediction service temporarily unavailable',
+        fallback: true
+      });
+    }
+  } catch (error) {
+    console.error('Error getting predicted completion:', error);
+    // Avoid sending stack traces to frontend
+    return res.status(500).json({
+      error: 'Failed to get predicted completion',
+      message: 'Internal server error occurred'
+    });
+  }
+};exports.getRiskAlerts = async (req, res) => {
+  try {
+    console.log(`Received request for getRiskAlerts with projectId: ${req.params.projectId}`);
+
+    const project = await Project.findById(req.params.projectId);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Access control
+    let hasAccess = false;
+    if (req.user.role === 'ADMIN') {
+      hasAccess = true;
+    } else if (req.user.role === 'TUTOR' && project.tutorRef && project.tutorRef.toString() === req.user.id) {
+      hasAccess = true;
+    } else if (req.user.role === 'STUDENT') {
+      const user = await User.findById(req.user.id).select('classe');
+      if (user && user.classe && project.classes.some(cls => cls.toString() === user.classe.toString())) {
+        hasAccess = true;
+      }
+    }
+
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'You do not have access to this project' });
+    }
+
+    const alert = await identifyRiskAlerts(req.params.projectId);
+    res.json({ alert });
+  } catch (error) {
+    console.error(`Error in getRiskAlerts for project ${req.params.projectId}:`, {
+      message: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ message: 'Error identifying risk alerts', error: error.message });
+  }
+};
+
+exports.getProjectsForClass = async (req, res) => {
+  try {
+    const { classId } = req.params;
+
+    if (!Types.ObjectId.isValid(classId)) {
+      return res.status(400).json({ error: 'Invalid class ID' });
+    }
+
+    const filter = { classes: classId };
+
+    // Apply role-based filtering
+    if (req.user.role === 'TUTOR') {
+      filter.tutorRef = req.user.id; // Tutors only see their own projects
+    } else if (req.user.role === 'STUDENT') {
+      // Ensure the student's class matches the requested classId
+      const user = await User.findById(req.user.id).select('classe');
+      if (!user || !user.classe || user.classe.toString() !== classId) {
+        return res.status(403).json({ error: 'You do not have access to projects in this class' });
+      }
+    }
+
+    const projects = await Project.find(filter)
+        .populate('tutorRef', 'firstName lastName email')
+        .populate('members.user', 'firstName lastName email userRole')
+        .populate('teamRef')
+        .populate('classes', 'name description')
+        .sort({ createdAt: -1 });
+
+    return res.json(projects);
+  } catch (err) {
+    console.error('Error in getProjectsForClass:', err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+// backend/controllers/projectController.js
+exports.getAvailableProjects = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Only admins can view available projects' });
+    }
+
+    const projects = await Project.find({ status: { $ne: 'COMPLETED' } })
+        .select('name description')
+        .populate({ path: 'classes', select: 'name', options: { strictPopulate: false } })
+        .lean(); // Use lean to simplify the response
+    return res.json(projects);
+  } catch (err) {
+    console.error('Error in getAvailableProjects:', err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+exports.assignTeamToProject = async (req, res) => {
+  try {
+    const projectId = req.params.projectId; // Get projectId from URL params
+    const { teamId } = req.body;
+
+    if (!Types.ObjectId.isValid(projectId)) {
+      return res.status(400).json({ message: `Invalid project ID: ${projectId}` });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    if (teamId) {
+      if (!Types.ObjectId.isValid(teamId)) {
+        return res.status(400).json({ message: `Invalid team ID: ${teamId}` });
+      }
+      const team = await Team.findById(teamId);
+      if (!team) {
+        return res.status(404).json({ message: 'Team not found' });
+      }
+    }
+
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Only admins can assign teams' });
+    }
+
+    project.teamRef = teamId || null;
+    await project.save();
+
+    // Update project members based on the team
+    if (teamId) {
+      const team = await Team.findById(teamId);
+      const teamMembers = team.members.map(member => ({
+        user: member.user,
+        role: 'STUDENT',
+        dateJoined: new Date()
+      }));
+
+      // Remove existing team members (if any) and add new team members
+      project.members = project.members.filter(member => member.role !== 'STUDENT'); // Keep tutors
+      project.members.push(...teamMembers);
+      await project.save();
+    } else {
+      // If team is unassigned, remove all student members (keep tutors)
+      project.members = project.members.filter(member => member.role !== 'STUDENT');
+      await project.save();
+    }
+
+    await project.populate('teamRef', 'name');
+    await project.populate('members.user', 'firstName lastName email');
+    await project.populate('classes', 'name');
+    res.status(200).json(project);
+  } catch (error) {
+    console.error('Error assigning team:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

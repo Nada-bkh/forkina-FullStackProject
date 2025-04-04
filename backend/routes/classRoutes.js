@@ -19,5 +19,5 @@ router.post('/add-students', classController.addStudentsToClass);
 
 // Get all students for a tutor (across all their classes)
 router.get('/tutor/students', classController.getAllStudentsForTutor);
-
+router.get('/:classId/projects', authMiddleware, classController.getProjectsForClass);
 module.exports = router;

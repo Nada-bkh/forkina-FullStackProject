@@ -32,6 +32,10 @@ exports.createTask = async (req, res) => {
     });
 
     await task.save();
+
+    // Update project progress after creating the task
+    await project.updateProgress();
+
     await task.populate('createdBy', 'firstName lastName email');
     if (assignedTo) await task.populate('assignedTo', 'firstName lastName email');
 
@@ -41,7 +45,6 @@ exports.createTask = async (req, res) => {
     return res.status(400).json({ error: err.message });
   }
 };
-
 exports.getAllTasks = async (req, res) => {
   try {
     const { projectId, status, priority, assignedTo, search } = req.query;
@@ -150,7 +153,6 @@ exports.updateTask = async (req, res) => {
     return res.status(400).json({ error: err.message });
   }
 };
-
 exports.deleteTask = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);

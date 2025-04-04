@@ -4,3 +4,4 @@ project
 /project/node_modules/
 /project/package-lock.json/
 package-lock.json
+/.venv/

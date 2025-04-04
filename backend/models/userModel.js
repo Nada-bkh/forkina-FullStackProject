@@ -44,10 +44,7 @@ const userSchema = new Schema(
       }
     },
     // Classe de l'étudiant
-    classe: { 
-      type: String,
-      default: "--" // Par défaut, pas encore affecté
-    },
+
     educationLevel: {
       type: String,
       enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'],

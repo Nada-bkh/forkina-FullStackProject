@@ -43,3 +43,31 @@ export const deleteUser = async (userId) => {
     throw new Error(error.response?.data?.message || 'Failed to delete user');
   }
 };
+// Add function to fetch the current user
+export const getCurrentUser = async () => {
+  try {
+    const response = await api.get('/users/me');
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch current user');
+  }
+};
+// Fetch unassigned students specifically
+export const fetchUnassignedStudents = async () => {
+  try {
+    const response = await api.get('/users', {
+      params: { role: 'STUDENT', unassigned: true },
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch unassigned students');
+  }
+};
+export const fetchClassmates = async (classId) => {
+  try {
+    const response = await api.get(`/users/classmates/${classId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || 'Failed to fetch classmates');
+  }
+};

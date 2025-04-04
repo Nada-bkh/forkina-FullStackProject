@@ -16,4 +16,5 @@ router.delete('/:id', teamController.deleteTeam);
 router.get('/', teamController.getAllTeams);
 router.get('/:id', teamController.getTeamById);
 router.post('/confirm-delete', teamController.confirmOrDeleteTeam); // New route
+router.put('/assign-project',  teamController.assignProjectToTeam); // New route
 module.exports = router;

@@ -10,39 +10,36 @@ exports.createTeam = async (req, res) => {
     }
 
     const { name, memberIds } = req.body;
-    const student = await User.findById(req.user.id);
+    const student = await User.findById(req.user.id).populate('classe');
     if (!student.classe) {
       return res.status(400).json({ message: 'You must be assigned to a class to create a team' });
     }
 
-    if (memberIds && memberIds.length > 0) {
-      const classmates = await User.find({
-        _id: { $in: memberIds },
-        classe: student.classe,
-        userRole: 'STUDENT',
-      });
-      if (classmates.length !== memberIds.length) {
-        return res.status(400).json({ message: 'All members must be classmates' });
-      }
+    // Validate that all members are from the same class
+    const classmates = await User.find({
+      _id: { $in: memberIds },
+      classe: student.classe._id,
+      userRole: 'STUDENT'
+    });
+
+    if (classmates.length !== memberIds.length) {
+      return res.status(400).json({ message: 'All members must be from your class' });
     }
 
+    // Create the team
     const team = new Team({
       name,
-      classRef: student.classe,
+      classRef: student.classe._id,
       createdBy: req.user.id,
       members: [
-        { user: req.user.id },
-        ...(memberIds ? memberIds.map(id => ({ user: id })) : []),
-      ],
-      confirmed: false, // Default to unconfirmed
+        { user: req.user.id }, // Creator is automatically a member
+        ...memberIds.map(id => ({ user: id }))
+      ]
     });
 
     await team.save();
-    await User.updateMany(
-        { _id: { $in: team.members.map(m => m.user) } },
-        { teamRef: team._id }
-    );
 
+    // Populate for response
     await team.populate('members.user', 'firstName lastName email');
     await team.populate('createdBy', 'firstName lastName email');
     await team.populate('classRef', 'name');
@@ -63,19 +60,12 @@ exports.getStudentTeams = async (req, res) => {
         .populate('createdBy', 'firstName lastName email')
         .populate('classRef', 'name');
 
-    // Fetch tutor for the class
-    const teamsWithTutor = await Promise.all(
-        teams.map(async (team) => {
-          const classData = await Class.findById(team.classRef._id).populate('tutor', 'firstName lastName');
-          return { ...team.toObject(), tutor: classData?.tutor };
-        })
-    );
-
-    return res.json(teamsWithTutor);
+    return res.json(teams);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 };
+
 exports.updateTeam = async (req, res) => {
   try {
     if (req.user.role !== 'STUDENT') {
@@ -102,7 +92,7 @@ exports.updateTeam = async (req, res) => {
         classe: student.classe,
         userRole: 'STUDENT'
       });
-      
+
       if (classmates.length !== memberIds.length) {
         return res.status(400).json({ message: 'All members must be classmates' });
       }
@@ -121,12 +111,12 @@ exports.updateTeam = async (req, res) => {
 
     // Update teamRef for all members
     await User.updateMany(
-      { teamRef: team._id },
-      { $unset: { teamRef: 1 } }
+        { teamRef: team._id },
+        { $unset: { teamRef: 1 } }
     );
     await User.updateMany(
-      { _id: { $in: team.members.map(m => m.user) } },
-      { teamRef: team._id }
+        { _id: { $in: team.members.map(m => m.user) } },
+        { teamRef: team._id }
     );
 
     await team.populate('members.user', 'firstName lastName email');
@@ -157,8 +147,8 @@ exports.deleteTeam = async (req, res) => {
 
     // Remove teamRef from all members
     await User.updateMany(
-      { teamRef: team._id },
-      { $unset: { teamRef: 1 } }
+        { teamRef: team._id },
+        { $unset: { teamRef: 1 } }
     );
 
     await Team.findByIdAndDelete(req.params.id);
@@ -231,24 +221,16 @@ exports.confirmOrDeleteTeam = async (req, res) => {
 };
 exports.getAllTeams = async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'TUTOR') {
-      return res.status(403).json({ message: 'Only admins and tutors can view all teams' });
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Only admins can view all teams' });
     }
 
     const teams = await Team.find()
-        .populate('projectRef')
         .populate('members.user', 'firstName lastName email')
         .populate('createdBy', 'firstName lastName email')
         .populate('classRef', 'name');
 
-    const teamsWithTutor = await Promise.all(
-        teams.map(async (team) => {
-          const classData = await Class.findById(team.classRef._id).populate('tutor', 'firstName lastName');
-          return { ...team.toObject(), tutor: classData?.tutor };
-        })
-    );
-
-    return res.json(teamsWithTutor);
+    return res.json(teams);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -256,20 +238,56 @@ exports.getAllTeams = async (req, res) => {
 exports.getTeamById = async (req, res) => {
   try {
     const team = await Team.findById(req.params.id)
-      .populate('projectRef')
-      .populate('members.user', 'firstName lastName email')
-      .populate('createdBy', 'firstName lastName email')
-      .populate('classRef', 'name');
-    
+        .populate('projectRef')
+        .populate('members.user', 'firstName lastName email')
+        .populate('createdBy', 'firstName lastName email')
+        .populate('classRef', 'name');
+
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
     }
 
     // Students can only see their own teams
-    if (req.user.role === 'STUDENT' && 
+    if (req.user.role === 'STUDENT' &&
         !team.members.some(m => m.user.toString() === req.user.id)) {
       return res.status(403).json({ message: 'You do not have access to this team' });
     }
+
+    return res.json(team);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+exports.assignProjectToTeam = async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Only admins can assign projects to teams' });
+    }
+
+    const { teamId, projectId } = req.body;
+
+    // Validate team
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+
+    // Validate project
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Assign the project to the team
+    team.projectRef = projectId;
+    await team.save();
+
+    // Populate for response
+    await team.populate('projectRef', 'name');
+    await team.populate('members.user', 'firstName lastName email');
+    await team.populate('createdBy', 'firstName lastName email');
+    await team.populate('classRef', 'name');
 
     return res.json(team);
   } catch (err) {

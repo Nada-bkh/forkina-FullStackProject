@@ -1,7 +1,7 @@
 // controllers/classController.js
 const Class = require('../models/classModel');
 const User = require('../models/userModel');
-
+const Project = require('../models/projectModel');
 // Create a new class (Admin only)
 exports.createClass = async (req, res) => {
   try {
@@ -256,5 +256,27 @@ exports.getAllStudentsForTutor = async (req, res) => {
     return res.json(students);
   } catch (err) {
     return res.status(500).json({ error: err.message });
+  }
+};
+exports.getProjectsForClass = async (req, res) => {
+  try {
+    const classId = req.params.classId;
+
+    // Verify the class exists
+    const classItem = await Class.findById(classId);
+    if (!classItem) {
+      return res.status(404).json({ message: 'Class not found' });
+    }
+
+    // Find projects where the classId is in the project's classes array
+    const projects = await Project.find({ classes: classId })
+        .populate('tutorRef', 'firstName lastName email')
+        .populate('teamRef', 'name')
+        .populate('members.user', 'firstName lastName email');
+
+    res.json(projects);
+  } catch (error) {
+    console.error('Error fetching projects for class:', error);
+    res.status(500).json({ message: 'Server error while fetching projects' });
   }
 };

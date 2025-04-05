@@ -6,6 +6,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
+import AdminProjectsReview from './pages/admin/AdminProjectsReview';
 import DashboardLayout from "./components/layout/DashboardLayout";
 import StudentDashboardLayout from "./components/layout/StudentDashboardLayout";
 import TutorDashboardLayout from "./components/layout/TutorDashboardLayout";
@@ -100,6 +101,8 @@ const App = () => (
               <Route path="users/tutors" element={<UsersList />} />
               <Route path="submit-task" element={<SubmitTask />} />
               <Route path="classes" element={<ClassesManagement />} /> {/* New route */}
+              <Route path="/admin/projects" element={<AdminProjectsReview />} />
+             <Route path="/admin/projects/:id" element={<ProjectDetails />} />
             </Route>
 
             {/* Student Dashboard Routes */}

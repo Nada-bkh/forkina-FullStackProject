@@ -9,42 +9,9 @@ const UserRole = {
   TUTOR: 'TUTOR',
   ADMIN: 'ADMIN'
 };
-const Departement = {
-  SE: 'SE',
-  DS: 'DS',
-  NIDS: 'NIDS',
-  ArcTIC: 'ArcTIC',
-  Gamix: 'Gamix',
-  InFini: 'InFini',
-  SLEAM: 'SLEAM',
-  SAE: 'SAE',
-  ERP: 'ERP',
-  SIM: 'SIM',
-  TWIN: 'SIM',
-};
 
-const AcademicPosition = {
-  ASSISTANT: 'ASSISTANT',
-  PROFESSOR: 'PROFESSOR',
-  DEPARTMENT_HEAD: 'DEPARTMENT_HEAD',
-};
 const userSchema = new Schema(
   {
-    departement: {
-      type: String,
-      enum: Object.values(Departement),
-      default: null, // Par défaut, aucun département
-      required: function() {
-        return this.userRole === UserRole.TUTOR;
-      }
-    },
-    academicPosition: {
-      type: String,
-      enum: Object.values(AcademicPosition),
-      required: function() {
-        return this.userRole === UserRole.TUTOR; // Requis seulement pour les tuteurs
-      }
-    },
     firstName: { type: String, required: true },
     // Reference to Class model instead of a string
     classe: { 
@@ -95,7 +62,6 @@ const userSchema = new Schema(
       enum: Object.values(UserRole),
       default: UserRole.STUDENT
     },
-
     teamRef: {
       type: Schema.Types.ObjectId,
       ref: 'Team',

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import { isAuthenticated } from '../utils/authUtils';
@@ -64,9 +63,48 @@ const SignIn = () => {
   const [showFaceLogin, setShowFaceLogin] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      navigate('/admin');
-    }
+    const checkAuthStatus = async () => {
+      // Vérifier d'abord si un token existe
+      if (isAuthenticated()) {
+        try {
+          // Récupérer le token
+          const token = localStorage.getItem('token');
+          
+          // Appeler l'API pour vérifier le token et obtenir le rôle
+          const response = await fetch('http://localhost:5001/api/auth/me', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            console.log('SignIn - Utilisateur déjà authentifié:', userData);
+            
+            // Rediriger vers le tableau de bord approprié
+            if (userData.role === 'ADMIN') {
+              navigate('/admin');
+            } else if (userData.role === 'STUDENT') {
+              navigate('/student');
+            } else if (userData.role === 'TUTOR') {
+              navigate('/tutor');
+            } else {
+              // Si le rôle n'est pas reconnu, considérer comme étudiant par défaut
+              navigate('/student');
+            }
+          } else {
+            // Si l'API retourne une erreur, le token pourrait être invalide
+            console.log('SignIn - Token invalide');
+            localStorage.removeItem('token');
+          }
+        } catch (error) {
+          console.error('SignIn - Erreur lors de la vérification du token:', error);
+          localStorage.removeItem('token');
+        }
+      }
+    };
+    
+    checkAuthStatus();
   }, [navigate]);
 
   useEffect(() => {
@@ -201,10 +239,17 @@ const SignIn = () => {
   };
 
   const githubLogin = () => {
-    window.open(
-      "http://localhost:5001/auth/github",
-      "_self"
-    );
+    console.log("Tentative de connexion GitHub...");
+    console.log("Redirection vers: http://localhost:5001/auth/github");
+    try {
+      window.open(
+        "http://localhost:5001/auth/github",
+        "_self"
+      );
+    } catch (error) {
+      console.error("Erreur lors de la redirection GitHub:", error);
+      setError("Erreur de connexion GitHub: " + error.message);
+    }
   };
 
   return (

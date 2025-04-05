@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   Box,
   Typography,
@@ -20,25 +21,48 @@ const ProjectDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [project, setProject] = useState(null);
+  const [isMember, setIsMember] = useState(false);
+  const [joinLoading, setJoinLoading] = useState(false);
 
   useEffect(() => {
-    // Placeholder for loading project details
-    const timer = setTimeout(() => {
-      setLoading(false);
-      setProject({
-        _id: projectId,
-        name: 'Sample Project',
-        description: 'This is a placeholder for the project description with detailed information about goals, scope, and deliverables.',
-        startDate: new Date().toISOString(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'In Progress',
-        tags: ['Web', 'React', 'NodeJS'],
-        createdAt: new Date().toISOString()
-      });
-    }, 1000);
-    
-    return () => clearTimeout(timer);
+    const fetchProjectDetails = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`http://localhost:5001/api/projects/${projectId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        console.log('Project details:', response.data);
+        
+        // Vérifier si les données sont dans response.data.project ou directement dans response.data
+        const projectData = response.data.project || response.data;
+        setProject(projectData);
+        
+        // Vérifier si l'utilisateur est membre du projet
+        const token = localStorage.getItem('token');
+        if (token) {
+          const userId = JSON.parse(atob(token.split('.')[1])).id;
+          const isMemberOfProject = projectData.members && 
+            projectData.members.some(m => (m.user === userId || (m.user && m.user._id === userId)));
+          setIsMember(isMemberOfProject);
+        }
+        
+        // Si pas de données valides, lever une erreur
+        if (!projectData || (!projectData.name && !projectData._id)) {
+          throw new Error('Invalid project data received');
+        }
+      } catch (err) {
+        console.error('Error fetching project:', err);
+        setError('Failed to load project details: ' + (err.response?.data?.error || err.message));
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchProjectDetails();
   }, [projectId]);
+  
 
   const handleBack = () => {
     navigate('/student/projects');
@@ -46,6 +70,41 @@ const ProjectDetails = () => {
 
   const handleViewTasks = () => {
     navigate(`/student/projects/${projectId}/tasks`);
+  };
+
+  // Fonction pour rejoindre un projet
+  const handleJoinProject = async () => {
+    try {
+      setJoinLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('You must be logged in to join a project');
+      }
+
+      const userId = JSON.parse(atob(token.split('.')[1])).id;
+      
+      const response = await axios.post(
+        `http://localhost:5001/api/projects/${projectId}/members`, 
+        { userId, role: 'STUDENT' },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      setIsMember(true);
+      console.log('Successfully joined project:', response.data);
+      
+      // Rafraîchir les données du projet
+      window.location.reload();
+    } catch (err) {
+      console.error('Error joining project:', err);
+      setError('Failed to join project: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setJoinLoading(false);
+    }
   };
 
   if (loading) {
@@ -87,20 +146,23 @@ const ProjectDetails = () => {
         <Paper sx={{ p: 4 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
             <Typography variant="h4">{project.name}</Typography>
-            <Button
-              variant="contained"
-              startIcon={<TaskIcon />}
-              onClick={handleViewTasks}
-              sx={{
-                backgroundColor: '#dd2825',
-                color: 'white',
-                '&:hover': {
-                  backgroundColor: '#c42020'
-                }
-              }}
-            >
-              View My Tasks
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+     
+              <Button
+                variant="contained"
+                startIcon={<TaskIcon />}
+                onClick={handleViewTasks}
+                sx={{
+                  backgroundColor: '#dd2825',
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: '#c42020'
+                  }
+                }}
+              >
+                View My Tasks
+              </Button>
+            </Box>
           </Box>
 
           <Divider sx={{ mb: 3 }} />
@@ -115,7 +177,15 @@ const ProjectDetails = () => {
               <Typography variant="h6">Status</Typography>
               <Chip 
                 label={project.status} 
-                color={project.status === 'Completed' ? 'success' : 'primary'} 
+                color={
+                  project.status === 'COMPLETED' || project.status === 'APPROVED' 
+                    ? 'success' 
+                    : project.status === 'IN_PROGRESS' 
+                    ? 'primary'
+                    : project.status === 'REJECTED'
+                    ? 'error'
+                    : 'default'
+                } 
                 sx={{ mt: 1 }} 
               />
             </Grid>

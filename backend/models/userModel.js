@@ -9,9 +9,55 @@ const UserRole = {
   TUTOR: 'TUTOR',
   ADMIN: 'ADMIN'
 };
+const Departement = {
+  SE: 'SE',
+  DS: 'DS',
+  NIDS: 'NIDS',
+  ArcTIC: 'ArcTIC',
+  Gamix: 'Gamix',
+  InFini: 'InFini',
+  SLEAM: 'SLEAM',
+  SAE: 'SAE',
+  ERP: 'ERP',
+  SIM: 'SIM',
+  TWIN: 'TWIN',
+};
 
+const AcademicPosition = {
+  ASSISTANT: 'ASSISTANT',
+  PROFESSOR: 'PROFESSOR',
+  LECTURER: 'LECTURER',
+  DEPARTMENT_HEAD: 'DEPARTMENT_HEAD',
+  SUPERVISOR: 'SUPERVISOR'
+};
 const userSchema = new Schema(
   {
+    departement: {
+      type: String,
+      enum: {
+        values: Object.values(Departement),
+        message: '{VALUE} is not a valid department'
+      },
+      validate: {
+        validator: function(v) {
+          // Permettre null ou une valeur dans l'enum
+          return v === null || Object.values(Departement).includes(v);
+        },
+        message: props => `${props.value} is not a valid department!`
+      },
+      default: null, // Par défaut, aucun département
+      required: function() {
+        return this.userRole === UserRole.TUTOR;
+      }
+    },
+    academicPosition: {
+      type: String,
+      enum: Object.values(AcademicPosition),
+      default: 'ASSISTANT', // Valeur par défaut pour les tuteurs
+      required: function() {
+        return this.userRole === UserRole.TUTOR; // Requis seulement pour les tuteurs
+      }
+    },
     firstName: { type: String, required: true },
     // Reference to Class model instead of a string
     classe: { 
@@ -62,6 +108,7 @@ const userSchema = new Schema(
       enum: Object.values(UserRole),
       default: UserRole.STUDENT
     },
+
     teamRef: {
       type: Schema.Types.ObjectId,
       ref: 'Team',

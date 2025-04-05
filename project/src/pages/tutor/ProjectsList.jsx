@@ -21,6 +21,9 @@ const ProjectsList = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
+      case 'RECOMMENDED': return 'warning';
+      case 'APPROVED': return 'success';
+      case 'REJECTED': return 'error';
       case 'PENDING': return 'default';
       case 'IN_PROGRESS': return 'primary';
       case 'COMPLETED': return 'success';
@@ -84,6 +87,11 @@ const ProjectsList = () => {
           Create Project
         </Button>
       </Box>
+      
+      <Alert severity="info" sx={{ mb: 3 }}>
+        When you create a new project, it will be in "RECOMMENDED" status and needs admin approval before becoming active.
+      </Alert>
+      
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
       <Paper sx={{ p: 2, mb: 3 }}>
         <form onSubmit={handleSearch}>

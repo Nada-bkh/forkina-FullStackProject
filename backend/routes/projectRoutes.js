@@ -1,4 +1,3 @@
-// routes/projectRoutes.js
 const express = require('express');
 const router = express.Router();
 const projectController = require('../controllers/projectController');
@@ -13,6 +12,11 @@ router.get('/', projectController.getAllProjects);
 router.get('/:id', projectController.getProjectById);
 router.put('/:id', projectController.updateProject);
 router.delete('/:id', projectController.deleteProject);
+
+// Admin approval routes
+router.post('/:id/approve', projectController.approveProject);
+router.post('/:id/reject', projectController.rejectProject);
+router.get('/recommended', projectController.getRecommendedProjects);
 
 // Project member management
 router.post('/:id/members', projectController.addProjectMember);

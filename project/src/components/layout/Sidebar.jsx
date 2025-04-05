@@ -55,7 +55,7 @@ const Sidebar = ({ user }) => {
     {
       text: 'Projects',
       icon: <AssignmentIcon style={{ color: 'white' }} />,
-      path: '/admin/projects'
+      path: '/admin/projects',
     },
     {
       text: 'Assign Task',
@@ -150,9 +150,19 @@ const Sidebar = ({ user }) => {
               <ListItemButton
                 selected={location.pathname === item.path}
                 onClick={() => navigate(item.path)}
+                sx={item.important ? { 
+                  borderLeft: '4px solid #ff9800', 
+                  backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 152, 0, 0.2)'
+                  }
+                } : {}}
               >
                 <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.text} />
+                <ListItemText 
+                  primary={item.text} 
+                  primaryTypographyProps={item.important ? { fontWeight: 'bold' } : {}}
+                />
               </ListItemButton>
             </ListItem>
             {item.subItems && (

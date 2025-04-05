@@ -102,7 +102,7 @@ const ProjectCreate = () => {
           startDate: formData.startDate.format('YYYY-MM-DD'),
           endDate: formData.endDate.format('YYYY-MM-DD'),
           tags: formData.tags,
-          status: 'PENDING'
+          status: 'RECOMMENDED'
         })
       });
       

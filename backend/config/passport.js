@@ -14,11 +14,12 @@ const GOOGLE_CONFIG = {
 };
 
 const GITHUB_CONFIG = {
-  clientID: "Ov23li8PPtcOLA4w0sis",
-  clientSecret: "e671587747f604e9782b197e6bb067533db9d234",
-  callbackURL: `${BACKEND_URL}/auth/github/callback`,
+  clientID: process.env.GITHUB_CLIENT_ID,
+  clientSecret: process.env.GITHUB_CLIENT_SECRET,
+  callbackURL: process.env.GITHUB_CALLBACK_URL || `${BACKEND_URL}/auth/github/callback`,
   scope: ["user:email"],
   authorizationURL: "https://github.com/login/oauth/authorize",
+  tokenURL: "https://github.com/login/oauth/access_token",
   passReqToCallback: true,
   state: true
 };
@@ -30,6 +31,13 @@ console.log('Passport Config:', {
   callbackURL: GOOGLE_CONFIG.callbackURL,
   githubCallbackURL: GITHUB_CONFIG.callbackURL,
   CLIENT_URL: CLIENT_URL
+});
+
+// Force log des variables d'env utilisées
+console.log('GitHub OAuth Configuration:', {
+  clientID: GITHUB_CONFIG.clientID,
+  callbackURL: GITHUB_CONFIG.callbackURL,
+  scope: GITHUB_CONFIG.scope
 });
 
 // Check for required environment variables
@@ -79,7 +87,8 @@ passport.use(
         accountStatus: true,
         isEmailVerified: true,
         cin: tempCin, // Add temporary CIN
-        classe: '--' // Default class
+        classe: '--', // Default class
+        departement: 'SE' // Default department
       };
 
       console.log('Creating new user with data:', userData);
@@ -99,20 +108,29 @@ passport.use(
 passport.use(
   new GitHubStrategy(GITHUB_CONFIG, async function(request, accessToken, refreshToken, profile, done) {
     try {
+      console.log('GitHub authentication attempt initiated');
+      console.log('GitHub Config:', {
+        clientID: GITHUB_CONFIG.clientID,
+        callbackURL: GITHUB_CONFIG.callbackURL,
+        scope: GITHUB_CONFIG.scope
+      });
+
       if (!profile) {
+        console.error('No profile received from GitHub');
         return done(new Error("No profile received from GitHub"), null);
       }
 
-      console.log('GitHub Profile:', {
+      console.log('GitHub Profile received:', {
         id: profile.id,
         displayName: profile.displayName,
         username: profile.username,
-        email: profile.emails?.[0]?.value,
-        avatar: profile.photos?.[0]?.value
+        emails: profile.emails,
+        photos: profile.photos
       });
 
+      // Recherche de l'utilisateur par son ID GitHub
       let user = await User.findOne({ githubId: profile.id });
-      console.log('Existing user:', user);
+      console.log('Existing user search result:', user ? 'User found' : 'User not found');
 
       if (!user) {
         const firstName = profile.displayName ? profile.displayName.split(' ')[0] : profile.username;
@@ -132,14 +150,21 @@ passport.use(
           accountStatus: true,
           isEmailVerified: true,
           cin: tempCin,
-          classe: '--'
+          classe: '--',
+          departement: 'SE'
         };
         console.log('Creating new user with data:', userData);
         
-        user = await User.create(userData);
-        console.log('New user created:', user);
+        try {
+          user = await User.create(userData);
+          console.log('New user created successfully:', user._id);
+        } catch (createError) {
+          console.error('Error creating new user:', createError);
+          return done(createError, null);
+        }
       }
 
+      console.log('GitHub authentication successful, returning user');
       return done(null, user);
     } catch (error) {
       console.error('Error in GitHub Strategy:', error);

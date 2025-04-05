@@ -6,7 +6,10 @@ const ProjectStatus = {
   PENDING: 'PENDING',
   IN_PROGRESS: 'IN_PROGRESS',
   COMPLETED: 'COMPLETED',
-  ARCHIVED: 'ARCHIVED'
+  ARCHIVED: 'ARCHIVED',
+  RECOMMENDED: 'RECOMMENDED', 
+  APPROVED: 'APPROVED',       
+  REJECTED: 'REJECTED'   
 };
 
 const projectSchema = new Schema(

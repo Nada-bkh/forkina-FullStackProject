@@ -34,6 +34,7 @@ import StudentsList from './pages/tutor/StudentsList';
 import ClassesList from './pages/tutor/ClassesList'; // New import pages/tutor/ClassesList
 import ClassDetails from './pages/tutor/components/ClassDetails'; // New import
 import ClassesManagement from './pages/admin/ClassesManagement'; // New import
+import AdminProjectsReview from './pages/admin/AdminProjectsReview';
 
 const theme = createTheme({
   palette: {
@@ -99,7 +100,10 @@ const App = () => (
               <Route path="users/students" element={<UsersList />} />
               <Route path="users/tutors" element={<UsersList />} />
               <Route path="submit-task" element={<SubmitTask />} />
-              <Route path="classes" element={<ClassesManagement />} /> {/* New route */}
+              <Route path="classes" element={<ClassesManagement />} />
+              <Route path="projects" element={<AdminProjectsReview />} />
+              <Route path="projects/:projectId" element={<ProjectDetails />} />
+              <Route path="projects/:projectId/edit" element={<ProjectEdit />} />
             </Route>
 
             {/* Student Dashboard Routes */}

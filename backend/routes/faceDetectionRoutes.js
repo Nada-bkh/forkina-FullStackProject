@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const User = require('../models/userModel');
 const { getFaceDescriptor, compareFaceDescriptors } = require('../utils/faceRecognition');
+const jwt = require('jsonwebtoken');
 
 // Route to handle face image uploads
 router.post('/upload', upload.single('faceImage'), async (req, res) => {
@@ -30,6 +31,28 @@ router.post('/upload', upload.single('faceImage'), async (req, res) => {
     const filePath = `/uploads/${req.file.filename}`;
     console.log('File uploaded successfully:', filePath);
     
+    // Note: Ces lignes sont incorrectes car req.user n'existe pas dans ce contexte
+    // Cette route est utilisée pendant l'inscription, pas pour la mise à jour
+    /*
+    const userToUpdate = await User.findOne({ email: req.user.email });
+    if (userToUpdate) {
+      userToUpdate.faceDescriptor = faceDescriptor;
+      userToUpdate.faceImage = filePath;
+      userToUpdate.departement = userToUpdate.departement || 'SE';
+      await userToUpdate.save();
+    }
+
+    const newUser = new User({
+      email: req.user.email,
+      firstName: req.user.firstName,
+      lastName: req.user.lastName,
+      faceDescriptor: faceDescriptor,
+      faceImage: filePath,
+      userRole: 'STUDENT',
+      departement: 'SE',
+    });
+    */
+
     return res.status(200).json({ 
       message: 'File uploaded successfully',
       filePath: filePath,
@@ -113,10 +136,20 @@ router.post('/login', upload.single('faceImage'), async (req, res) => {
       // Update login stats
       bestUser.lastLogin = new Date();
       bestUser.loginCount += 1;
-      await bestUser.save();
       
-      // Generate auth token
-      const token = bestUser.generateToken();
+      // Vérifier et définir un département par défaut si nécessaire
+      if (!bestUser.departement) {
+        bestUser.departement = 'SE'; // Valeur par défaut pour éviter les erreurs de validation
+      }
+      
+      await bestUser.save();
+
+      // Create JWT token
+      const token = jwt.sign(
+        { id: bestUser._id, role: bestUser.userRole },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
       
       // Return user data and token
       return res.status(200).json({

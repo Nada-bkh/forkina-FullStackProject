@@ -60,7 +60,8 @@ const SignUp = () => {
     birthDate: null,
     role: '',
     educationLevel: '',
-    cin: ''
+    cin: '',
+    departement: 'SE'
   });
   const [error, setError] = useState('');
   const [faceImage, setFaceImage] = useState(null);
@@ -86,7 +87,7 @@ const SignUp = () => {
     setFormData(prev => ({
       ...prev,
       birthDate: date
-    }));
+    })); 
   };
 
   const handleFileUpload = async (event) => {
@@ -133,19 +134,25 @@ const SignUp = () => {
     event.preventDefault();
     setError('');
     
-    // Validate that we have both face image and descriptor
     if (!faceImage || !faceDescriptor) {
       setError('Face image is required. Please upload your face image.');
       return;
     }
 
-    // Validate CIN for student role
+    // Validation des champs requis
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.role) {
+      setError('Please fill all required fields');
+      return;
+    }
+
+    // Validation CIN pour étudiants
     if (formData.role === 'STUDENT' && !formData.cin) {
-      setError('CIN is required for students.');
+      setError('CIN is required for students');
       return;
     }
 
     try {
+      // Envoyer en JSON au lieu de FormData - plus compatible avec API REST
       const response = await fetch('http://localhost:5001/api/auth/register', {
         method: 'POST',
         headers: {
@@ -154,27 +161,31 @@ const SignUp = () => {
         body: JSON.stringify({
           firstName: formData.firstName,
           lastName: formData.lastName,
+          username: formData.username, // Inclure le username
           email: formData.email,
           password: formData.password,
+          birthDate: formData.birthDate ? formData.birthDate.format('YYYY-MM-DD') : null,
           role: formData.role,
-          faceImage: faceImage,
-          faceDescriptor: faceDescriptor,
-          cin: formData.cin
+          educationLevel: formData.educationLevel || null,
+          faceImagePath: faceImage, // Envoi du chemin image plutôt que l'image
+          faceDescriptor: faceDescriptor, // Garder tel quel car déjà en JSON
+          cin: formData.cin || null,
+          departement: formData.departement || 'SE' // Ajouter le département
         })
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Server response:', errorData);
+        throw new Error(errorData.message || `Registration failed (${response.status})`);
       }
 
-      // Registration successful
+      // Inscription réussie
       navigate('/signin');
       
     } catch (err) {
-      setError(err.message);
-      console.error('Registration error:', err);
+      console.error('Registration error details:', err);
+      setError(err.message || 'Server error during registration');
     }
   };
 
@@ -269,6 +280,7 @@ const SignUp = () => {
               >
                 <MenuItem value="STUDENT">Student</MenuItem>
                 <MenuItem value="TUTOR">Tutor</MenuItem>
+
               </Select>
             </FormControl>
             
@@ -300,15 +312,34 @@ const SignUp = () => {
                   helperText="Votre numéro d'identité est requis pour l'inscription"
                 />
                 
-                <TextField
-                  margin="normal"
-                  fullWidth
-                  name="classe"
-                  label="Classe"
-                  value="--"
-                  disabled
-                  helperText="Votre classe sera attribuée par l'administrateur"
-                />
+            
+              </>
+            )}
+                    {formData.role === 'TUTOR' && (
+              <>
+                <FormControl fullWidth sx={{ mt: 2 }}>
+                <InputLabel>Department</InputLabel>
+    <Select
+      name="departement"
+      value={formData.departement}
+      onChange={handleChange}
+      required
+    >
+      <MenuItem value="SE">Software Engineering</MenuItem>
+      <MenuItem value="DS">Artificial Intelligence & Data Science</MenuItem>
+      <MenuItem value="NIDS">Network Infrastructure & Data Security</MenuItem>
+      <MenuItem value="ArcTIC">IT Architecture & Cloud Computing</MenuItem>
+      <MenuItem value="Gamix">Gaming & Immersive eXperience</MenuItem>
+      <MenuItem value="InFini">Financial Computing & Engineering</MenuItem>
+      <MenuItem value="SLEAM">Embedded, Ambient & Mobile Systems</MenuItem>
+      <MenuItem value="SAE">Software Architecture Engineering</MenuItem>
+      <MenuItem value="ERP">Enterprise Resource Planning & BI</MenuItem>
+      <MenuItem value="SIM">Information & Mobile Systems</MenuItem>
+      <MenuItem value="TWIN">Web & Internet Technologies</MenuItem>
+    </Select>
+                </FormControl>
+                
+                
               </>
             )}
 

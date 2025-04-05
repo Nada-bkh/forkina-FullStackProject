@@ -1,4 +1,3 @@
-// controllers/projectController.js
 const Project = require('../models/projectModel');
 const User = require('../models/userModel');
 const Task = require('../models/taskModel');
@@ -13,6 +12,16 @@ exports.createProject = async (req, res) => {
       return res.status(403).json({ message: 'Only tutors can create projects' });
     }
     
+    // Set initial status based on user role
+    let initialStatus;
+    if (req.user.role === 'ADMIN') {
+      // Admin can directly create projects with the provided status or default to PENDING
+      initialStatus = status || 'PENDING';
+    } else {
+      // Tutors can only recommend projects
+      initialStatus = 'RECOMMENDED';
+    }
+    
     // Create new project
     const project = new Project({
       name,
@@ -20,7 +29,7 @@ exports.createProject = async (req, res) => {
       startDate,
       endDate,
       tags: tags || [],
-      status: status || 'PENDING',
+      status: initialStatus,
       tutorRef: req.user.id,
       members: [{ user: req.user.id, role: 'TUTOR' }]
     });
@@ -31,7 +40,7 @@ exports.createProject = async (req, res) => {
       startDate,
       endDate,
       tags,
-      status,
+      status: initialStatus,
       tutorRef: req.user.id
     });
     
@@ -48,6 +57,7 @@ exports.createProject = async (req, res) => {
   }
 };
 
+// Existing getAllProjects function
 exports.getAllProjects = async (req, res) => {
   try {
     // Filter options
@@ -75,7 +85,24 @@ exports.getAllProjects = async (req, res) => {
     
     // If user is a student, only show projects they are a member of
     if (req.user.role === 'STUDENT') {
-      filter['members.user'] = req.user.id;
+      // Log pour déboguer
+      console.log('Filtering projects for student:', req.user.id);
+      console.log('Before filtering - all projects:', await Project.find({status: 'APPROVED'}).countDocuments());
+      
+      // Temporairement, montrer tous les projets approuvés aux étudiants sans filtrer par membre
+      // filter['members.user'] = req.user.id;
+      filter['status'] = 'APPROVED'; // Students can only see APPROVED projects
+      
+      console.log('Filter being applied:', JSON.stringify(filter));
+    }
+    
+    // Admin can see all projects
+    // Tutors can see their own projects and any project they're a member of
+    if (req.user.role === 'TUTOR') {
+      filter.$or = [
+        { tutorRef: req.user.id },
+        { 'members.user': req.user.id }
+      ];
     }
     
     const projects = await Project.find(filter)
@@ -90,6 +117,7 @@ exports.getAllProjects = async (req, res) => {
   }
 };
 
+// Existing getProjectById function
 exports.getProjectById = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
@@ -105,8 +133,13 @@ exports.getProjectById = async (req, res) => {
     const isMember = project.members.some(m => m.user._id.toString() === req.user.id);
     const isTutor = project.tutorRef._id.toString() === req.user.id;
     const isAdmin = req.user.role === 'ADMIN';
+    const isApprovedProject = project.status === 'APPROVED';
+    const isStudent = req.user.role === 'STUDENT';
     
-    if (!isMember && !isTutor && !isAdmin) {
+    // Allow students to see any approved project
+    const hasAccess = isMember || isTutor || isAdmin || (isStudent && isApprovedProject);
+    
+    if (!hasAccess) {
       return res.status(403).json({ error: 'You do not have access to this project' });
     }
     
@@ -125,6 +158,7 @@ exports.getProjectById = async (req, res) => {
   }
 };
 
+// Existing updateProject function
 exports.updateProject = async (req, res) => {
   try {
     const { name, description, status, startDate, endDate, tags } = req.body;
@@ -145,7 +179,7 @@ exports.updateProject = async (req, res) => {
     // Update fields
     if (name) project.name = name;
     if (description) project.description = description;
-    if (status) project.status = status;
+    if (status && isAdmin) project.status = status; // Only admin can change status
     if (startDate) project.startDate = startDate;
     if (endDate) project.endDate = endDate;
     if (tags) project.tags = tags;
@@ -162,6 +196,7 @@ exports.updateProject = async (req, res) => {
   }
 };
 
+// Existing deleteProject function
 exports.deleteProject = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
@@ -189,7 +224,97 @@ exports.deleteProject = async (req, res) => {
   }
 };
 
-// Add members to project
+// New function: Approve a recommended project
+exports.approveProject = async (req, res) => {
+  try {
+    // Only admin can approve projects
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Only administrators can approve projects' });
+    }
+    
+    const project = await Project.findById(req.params.id);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    // Check if project is in RECOMMENDED status
+    if (project.status !== 'RECOMMENDED') {
+      return res.status(400).json({ error: 'Only recommended projects can be approved' });
+    }
+    
+    // Update project status to APPROVED
+    project.status = 'APPROVED';
+    await project.save();
+    
+    // Populate for response
+    await project.populate('tutorRef', 'firstName lastName email');
+    await project.populate('members.user', 'firstName lastName email');
+    
+    return res.json({
+      message: 'Project approved successfully',
+      project
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// New function: Reject a recommended project
+exports.rejectProject = async (req, res) => {
+  try {
+    // Only admin can reject projects
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Only administrators can reject projects' });
+    }
+    
+    const project = await Project.findById(req.params.id);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    // Check if project is in RECOMMENDED status
+    if (project.status !== 'RECOMMENDED') {
+      return res.status(400).json({ error: 'Only recommended projects can be rejected' });
+    }
+    
+    // Update project status to REJECTED
+    project.status = 'REJECTED';
+    await project.save();
+    
+    // Populate for response
+    await project.populate('tutorRef', 'firstName lastName email');
+    await project.populate('members.user', 'firstName lastName email');
+    
+    return res.json({
+      message: 'Project rejected',
+      project
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// Get recommended projects (for admin)
+exports.getRecommendedProjects = async (req, res) => {
+  try {
+    // Only admin can see all recommended projects
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Only administrators can view all recommended projects' });
+    }
+    
+    const projects = await Project.find({ status: 'RECOMMENDED' })
+      .populate('tutorRef', 'firstName lastName email')
+      .populate('members.user', 'firstName lastName email userRole')
+      .populate('teamRef')
+      .sort({ createdAt: -1 });
+    
+    return res.json(projects);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// Existing addProjectMember function
 exports.addProjectMember = async (req, res) => {
   try {
     const { userId, role } = req.body;
@@ -237,7 +362,7 @@ exports.addProjectMember = async (req, res) => {
   }
 };
 
-// Remove member from project
+// Existing removeProjectMember function
 exports.removeProjectMember = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -271,7 +396,7 @@ exports.removeProjectMember = async (req, res) => {
   }
 };
 
-// Get project statistics
+// Existing getProjectStats function
 exports.getProjectStats = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);

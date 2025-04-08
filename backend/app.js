@@ -21,7 +21,8 @@ const authRoutes = require('./routes/authRoutes');
 const googleAuthRoutes = require('./routes/auth');
 const faceDetectionRoutes = require('./routes/faceDetectionRoutes');
 const fileRoutes = require('./routes/fileRoutes');
-const classRoutes = require('./routes/classRoutes'); // Add this line
+const classRoutes = require('./routes/classRoutes');
+const projectApplicationRoutes = require('./routes/projectApplicationRoutes');
 
 const app = express();
 
@@ -74,7 +75,9 @@ app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/face-detection', faceDetectionRoutes);
 app.use('/api/files', fileRoutes);
-app.use('/api/classes', classRoutes); // Add this line
+app.use('/api/classes', classRoutes);
+app.use('/api/project-applications', projectApplicationRoutes);
+
 // Handle React routing, return all requests to React app
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));

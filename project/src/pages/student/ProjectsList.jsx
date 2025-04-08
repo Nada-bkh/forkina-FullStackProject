@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -14,6 +14,7 @@ import {
   LinearProgress
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import ApplyIcon from '@mui/icons-material/AssignmentTurnedIn';
 import axios from 'axios';
 
 const ProjectsList = () => {
@@ -111,13 +112,22 @@ const ProjectsList = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" sx={{ mb: 3, color: '#dd2825' }}>
-        Mes Projets
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h5" sx={{ color: '#dd2825' }}>
+          Projets disponibles
+        </Typography>
+        <Button
+          component={Link}
+          to="/student/projects/apply"
+          variant="contained"
+          color="primary"
+          startIcon={<ApplyIcon />}
+        >
+          Candidater à un projet
+        </Button>
+      </Box>
 
-      <Alert severity="info" sx={{ mb: 3 }}>
-        Seuls les projets approuvés par l'administrateur sont visibles sur cette page.
-      </Alert>
+
 
       {projects.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>

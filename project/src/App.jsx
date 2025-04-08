@@ -30,6 +30,7 @@ import StudentProjectsList from "./pages/student/ProjectsList";
 import StudentProjectDetails from "./pages/student/ProjectDetails";
 import StudentTasksList from "./pages/student/TasksList";
 import StudentTaskDetails from "./pages/student/TaskDetails";
+import StudentProjectApply from "./pages/student/ProjectApply";
 import StudentsList from './pages/tutor/StudentsList';
 import ClassesList from './pages/tutor/ClassesList'; // New import pages/tutor/ClassesList
 import ClassDetails from './pages/tutor/components/ClassDetails'; // New import
@@ -111,6 +112,7 @@ const App = () => (
               <Route index element={<StudentDashboard />} />
               <Route path="profile" element={<Profile />} />
               <Route path="projects" element={<StudentProjectsList />} />
+              <Route path="projects/apply" element={<StudentProjectApply />} />
               <Route path="projects/:projectId" element={<StudentProjectDetails />} />
               <Route path="projects/:projectId/tasks" element={<StudentTasksList />} />
               <Route path="projects/:projectId/tasks/:taskId" element={<StudentTaskDetails />} />

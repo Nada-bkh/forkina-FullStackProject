@@ -19,5 +19,21 @@ router.get('/project/:projectId/tasks', taskController.getTasksByProject);
 // Task comments
 router.post('/:id/comments', taskController.addComment);
 router.get('/:id/comments', taskController.getComments);
-
+// Nouvelle route pour filtrer les tâches
+router.get('/filtered/tasks', taskController.getFilteredTasks);
+router.get('/', authMiddleware, async (req, res) => {
+    try {
+      const { projectId } = req.query;
+      if (!projectId) {
+        return res.status(400).json({ message: 'Project ID is required' });
+      }
+      const tasks = await Task.find({ projectRef: projectId }).populate(
+        'assignedTo',
+        'firstName lastName'
+      );
+      res.json({ data: tasks });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  });
 module.exports = router;

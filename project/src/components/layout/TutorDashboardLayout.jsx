@@ -71,8 +71,8 @@ const TutorDashboardLayout = () => {
             </Typography>
           </Box>
         )}
-        <Outlet context={{ user, updateUser }} />
-      </Box>
+          <Outlet context={{ user }} />
+          </Box>
     </Box>
   );
 };

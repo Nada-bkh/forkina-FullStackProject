@@ -32,6 +32,10 @@ exports.createTask = async (req, res) => {
     });
 
     await task.save();
+
+    // Update project progress after creating the task
+    await project.updateProgress();
+
     await task.populate('createdBy', 'firstName lastName email');
     if (assignedTo) await task.populate('assignedTo', 'firstName lastName email');
 
@@ -41,7 +45,6 @@ exports.createTask = async (req, res) => {
     return res.status(400).json({ error: err.message });
   }
 };
-
 exports.getAllTasks = async (req, res) => {
   try {
     const { projectId, status, priority, assignedTo, search } = req.query;
@@ -80,7 +83,102 @@ exports.getAllTasks = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+exports.getMemberTasks = async (req, res) => {
+  try {
+    const { projectId, memberId } = req.params;
 
+    // Validation des IDs
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      return res.status(400).json({ error: 'Invalid project ID format' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(memberId)) {
+      return res.status(400).json({ error: 'Invalid member ID format' });
+    }
+
+    // Récupération du projet
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    // Vérification que le membre fait bien partie du projet
+    const isMember = project.members.some(m => m.user.toString() === memberId);
+    if (!isMember) {
+      return res.status(404).json({ error: 'Member not found in this project' });
+    }
+
+    // Vérification des permissions
+    const isRequestingOwnData = req.user.id === memberId;
+    const isTutor = project.tutorRef && project.tutorRef.toString() === req.user.id;
+    const isAdmin = req.user.role === 'ADMIN';
+
+    if (!isRequestingOwnData && !isTutor && !isAdmin) {
+      return res.status(403).json({ 
+        error: 'You do not have permission to view tasks for this member' 
+      });
+    }
+
+    // Récupération des tâches assignées au membre
+    const tasks = await Task.find({ 
+      projectRef: projectId,
+      assignedTo: memberId 
+    })
+    .populate('createdBy', 'firstName lastName email')
+    .populate('assignedTo', 'firstName lastName email')
+    .populate('projectRef', 'name status')
+    .sort({ dueDate: 1, priority: -1 });
+
+    return res.json(tasks);
+  } catch (err) {
+    console.error('Error in getMemberTasks:', err.stack);
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      details: err.message 
+    });
+  }
+};
+// taskController.js
+// controllers/taskController.js
+exports.getFilteredTasks = async (req, res) => {
+  try {
+    const { assignedTo, project } = req.query;
+    
+    // Validation des paramètres
+    if (!assignedTo && !project) {
+      return res.status(400).json({ 
+        message: 'Au moins un filtre (assignedTo ou project) est requis' 
+      });
+    }
+
+    // Construction du filtre MongoDB
+    const filter = {};
+    if (assignedTo) {
+      if (!mongoose.Types.ObjectId.isValid(assignedTo)) {
+        return res.status(400).json({ message: 'ID assignedTo invalide' });
+      }
+      filter.assignedTo = assignedTo;
+    }
+    
+    if (project) {
+      if (!mongoose.Types.ObjectId.isValid(project)) {
+        return res.status(400).json({ message: 'ID project invalide' });
+      }
+      filter.projectRef = project;
+    }
+
+    // Récupération avec population des relations
+    const tasks = await Task.find(filter)
+      .populate('assignedTo', 'firstName lastName email')
+      .populate('projectRef', 'name description')
+      .lean();
+
+    res.json(tasks);
+  } catch (error) {
+    console.error('Error in getFilteredTasks:', error);
+    res.status(500).json({ 
+      message: 'Erreur serveur',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
 exports.getTaskById = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id)
@@ -150,7 +248,6 @@ exports.updateTask = async (req, res) => {
     return res.status(400).json({ error: err.message });
   }
 };
-
 exports.deleteTask = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
@@ -271,8 +368,10 @@ exports.getTasksByProject = async (req, res) => {
     const isMember = project.members.some(m => m.user.toString() === req.user.id);
     const isTutor = project.tutorRef && project.tutorRef.toString() === req.user.id;
     const isAdmin = req.user.role === 'ADMIN';
+    const isApprovedProject = project.approvalStatus === 'APPROVED';
+    const isStudent = req.user.role === 'STUDENT';
 
-    if (!isMember && !isTutor && !isAdmin) {
+    if (!(isApprovedProject && isStudent) && !isMember && !isTutor && !isAdmin) {
       return res.status(403).json({ error: 'You do not have permission to view tasks for this project' });
     }
 

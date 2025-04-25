@@ -37,7 +37,8 @@ const TutorSidebar = ({ user }) => {
     { text: 'Students', icon: <PeopleIcon style={{ color: 'white' }} />, path: '/tutor/students' },
     { text: 'Projects', icon: <AssignmentIcon style={{ color: 'white' }} />, path: '/tutor/projects' },
     { text: 'Classes', icon: <ClassIcon style={{ color: 'white' }} />, path: '/tutor/classes' },
-    { text: 'Teams', icon: <GroupIcon style={{ color: 'white' }} />, path: '/tutor/teams' }, // New item
+    { text: 'Teams Requests', icon: <GroupIcon style={{ color: 'white' }} />, path: '/tutor/teams' }, // New item
+    { text: 'Evaluation', icon: <GroupIcon style={{ color: 'white' }} />, path: '/tutor/teams/eval' }, // New item
   ];
 
   const handleLogout = async () => {

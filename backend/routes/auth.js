@@ -69,54 +69,53 @@ router.get(
 
 // GitHub auth callback
 router.get(
-  "/github/callback",
-  (req, res, next) => {
-    passport.authenticate("github", { session: true }, async (err, user, info) => {
-      if (err) {
-        console.error('GitHub Authentication error:', err);
-        return res.redirect(FAILURE_URL);
-      }
+    "/github/callback",
+    (req, res, next) => {
+      passport.authenticate("github", { session: true }, async (err, user, info) => {
+        if (err) {
+          console.error('GitHub Authentication error:', err);
+          return res.redirect(FAILURE_URL);
+        }
 
-      if (!user) {
-        console.error('No GitHub user found/created');
-        return res.redirect(FAILURE_URL);
-      }
+        if (!user) {
+          console.error('No GitHub user found/created');
+          return res.redirect(FAILURE_URL);
+        }
 
-      try {
-        // Generate token with consistent field names
-        const token = jwt.sign(
-          { 
-            id: user._id.toString(),
-            email: user.email,
-            role: user.userRole 
-          },
-          process.env.JWT_SECRET || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMzQ1NiIsInJvbGUiOiJTVFVERU5UIiwiaWF0IjoxNzQwMTM1NjEyLCJleHAiOjE3NDA3NDA0MTJ9.zUhKAi8PO7X8IAfPcbGw2j2LhdtuLBW6ww2E0VuthXU",
-          { expiresIn: '7d' }
-        );
+        try {
+          const token = jwt.sign(
+              {
+                id: user._id.toString(),
+                email: user.email,
+                role: user.userRole
+              },
+              process.env.JWT_SECRET || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMzQ1NiIsInJvbGUiOiJTVFVERU5UIiwiaWF0IjoxNzQwMTM1NjEyLCJleHAiOjE3NDA3NDA0MTJ9.zUhKAi8PO7X8IAfPcbGw2j2LhdtuLBW6ww2E0VuthXU",
+              { expiresIn: '7d' }
+          );
 
-        // Set token in cookie
-        res.cookie('auth_token', token, {
-          httpOnly: false,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-          path: '/' // Ensure the cookie is available on all paths
-        });
+          // Remove the cookie since we're passing the token in the URL
+          // res.cookie('auth_token', token, {
+          //   httpOnly: false,
+          //   secure: process.env.NODE_ENV === 'production',
+          //   sameSite: 'lax',
+          //   maxAge: 7 * 24 * 60 * 60 * 1000,
+          //   path: '/'
+          // });
 
-        // Log the user in
-        req.login(user, (err) => {
-          if (err) {
-            console.error('Login error:', err);
-            return res.redirect(FAILURE_URL);
-          }
-          res.redirect(`${CLIENT_URL}/auth-transfer`);
-        });
-      } catch (error) {
-        console.error('Token/login error:', error);
-        return res.redirect(FAILURE_URL);
-      }
-    })(req, res, next);
-  }
+          req.login(user, (err) => {
+            if (err) {
+              console.error('Login error:', err);
+              return res.redirect(FAILURE_URL);
+            }
+            // Pass token and role in the URL
+            res.redirect(`${CLIENT_URL}/auth-transfer?token=${token}&role=${user.userRole || 'STUDENT'}`);
+          });
+        } catch (error) {
+          console.error('Token/login error:', error);
+          return res.redirect(FAILURE_URL);
+        }
+      })(req, res, next);
+    }
 );
 
 // Check authentication status

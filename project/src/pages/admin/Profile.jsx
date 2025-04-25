@@ -14,9 +14,8 @@ import {
   CircularProgress
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { Person as PersonIcon } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import EditProfileDialog from '../../components/dialogs/EditProfileDialog';
-import { useNavigate, useOutletContext } from 'react-router-dom';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -27,7 +26,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 }));
 
 const Profile = () => {
-  const { user, updateUser } = useOutletContext();
+  const [user, setUser] = useState(null); // Add user state
   const [error, setError] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -71,7 +70,7 @@ const Profile = () => {
 
       const data = await response.json();
       console.log('Profile data received:', data);
-      updateUser(data);
+      setUser(data); // Update user state
     } catch (err) {
       console.error('Profile fetch error:', err);
       setError(err.message);
@@ -96,7 +95,7 @@ const Profile = () => {
   };
 
   const handleProfileUpdate = (updatedUser) => {
-    updateUser(updatedUser);
+    setUser(updatedUser); // Update user state
   };
 
   if (loading) {
@@ -112,7 +111,7 @@ const Profile = () => {
   }
 
   if (!user) {
-    return <Alert severity="info">Loading profile...</Alert>;
+    return <Alert severity="info">No profile data available.</Alert>;
   }
 
   return (
@@ -260,4 +259,4 @@ const Profile = () => {
   );
 };
 
-export default Profile; 
+export default Profile;

@@ -9,11 +9,25 @@ const UserRole = {
   TUTOR: 'TUTOR',
   ADMIN: 'ADMIN'
 };
-
+const DEPARTMENT = { 
+  ARCTIC: "ArcTIC",
+  DS: "DS",
+  ERP_BI: "ERP/BI",
+  GAMIX: "Gamix",
+  INFINI: "InFini",
+  NIDS: "NIDS",
+  SLEAM: "SLEAM",
+  SAE: "SAE",
+  SE: "SE",
+  SIM: "SIM",
+  TWIN: "TWIN",
+};
 const userSchema = new Schema(
   {
     firstName: { type: String, required: true },
-    // Reference to Class model instead of a string
+    birthdate: { type: Date,
+      required: false
+    },
     classe: { 
       type: Schema.Types.ObjectId,
       ref: 'Class',
@@ -44,14 +58,17 @@ const userSchema = new Schema(
       }
     },
     // Classe de l'étudiant
-    classe: { 
-      type: String,
-      default: "--" // Par défaut, pas encore affecté
-    },
+
     educationLevel: {
       type: String,
       enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'],
       default: 'BEGINNER'
+    },
+    department: {
+      type: String,
+      enum: Object.values(DEPARTMENT),
+
+      default: undefined
     },
     isGoogleUser: { type: Boolean, default: false },
     isGithubUser: { type: Boolean, default: false },

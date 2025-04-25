@@ -3,10 +3,10 @@ const express = require('express');
 const router = express.Router();
 const evaluationController = require('../controllers/evaluationController');
 
-router.post('/', evaluationController.createEvaluation);
-router.get('/', evaluationController.getAllEvaluations);
+router.post('/:teamId', evaluationController.createEvaluation);
 router.get('/:id', evaluationController.getEvaluationById);
 router.put('/:id', evaluationController.updateEvaluation);
 router.delete('/:id', evaluationController.deleteEvaluation);
+router.get('/team/:teamId', evaluationController.getEvaluationByTeamId);
 
 module.exports = router;

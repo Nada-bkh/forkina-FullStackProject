@@ -9,8 +9,9 @@ import {
   Box,
   Divider,
   Typography,
-  Avatar
+  Avatar,
 } from '@mui/material';
+
 import {
   People as PeopleIcon,
   Person as PersonIcon,
@@ -19,8 +20,13 @@ import {
   ExitToApp as ExitToAppIcon,
   AccountCircle as AccountCircleIcon,
   Class as ClassIcon,
-  Work as WorkIcon, // New import for Projects
-  Task as TaskIcon, // Already imported for Tasks
+  Work as WorkIcon,
+  
+  AutoStories as TutorIcon,    // Littérature/enseignement
+
+  AdminPanelSettings as AdminIcon, // Nouvelle icône pour les admins
+  Task as TaskIcon,
+  Group as GroupIcon, // Added here for Teams Management
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
@@ -36,7 +42,7 @@ const Sidebar = ({ user }) => {
     {
       text: 'Profile',
       icon: <AccountCircleIcon style={{ color: 'white' }} />,
-      path: '/admin/profile'
+      path: '/admin/profile',
     },
     {
       text: 'Users Management',
@@ -45,29 +51,36 @@ const Sidebar = ({ user }) => {
       subItems: [
         { text: 'All Users', icon: <PersonIcon style={{ color: 'white' }} />, path: '/admin/users' },
         { text: 'Students', icon: <SchoolIcon style={{ color: 'white' }} />, path: '/admin/users/students' },
-        { text: 'Tutors', icon: <PersonIcon style={{ color: 'white' }} />, path: '/admin/users/tutors' }
-      ]
+        { text: 'Tutors', icon: <PersonIcon style={{ color: 'white' }} />, path: '/admin/users/tutors' },
+        { text: 'Admins', icon: <AdminIcon style={{ color: 'white' }} />, path: '/admin/users/admins' }
+
+      ],
     },
     {
       text: 'Classes Management',
       icon: <ClassIcon style={{ color: 'white' }} />,
-      path: '/admin/classes'
+      path: '/admin/classes',
+    },
+    {
+      text: 'Teams Management',
+      icon: <GroupIcon style={{ color: 'white' }} />,
+      path: '/admin/teams',
     },
     {
       text: 'Projects Management',
-      icon: <WorkIcon style={{ color: 'white' }} />, // Changed to WorkIcon for better representation
-      path: '/admin/projects'
+      icon: <WorkIcon style={{ color: 'white' }} />,
+      path: '/admin/projects',
     },
     {
       text: 'Tasks Management',
       icon: <TaskIcon style={{ color: 'white' }} />,
-      path: '/admin/tasks'
+      path: '/admin/tasks',
     },
     {
       text: 'Assign Task',
       icon: <AssignmentIcon style={{ color: 'white' }} />,
-      path: '/admin/submit-task'
-    }
+      path: '/admin/submit-task',
+    },
   ];
 
   const handleLogout = async () => {
@@ -80,8 +93,8 @@ const Sidebar = ({ user }) => {
 
       await axios.post('http://localhost:5001/api/auth/logout', {}, {
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       localStorage.clear();
@@ -105,24 +118,13 @@ const Sidebar = ({ user }) => {
             '& .MuiDrawer-paper': {
               width: drawerWidth,
               boxSizing: 'border-box',
-              bgcolor: 'background.paper'
+              bgcolor: 'background.paper',
             },
           }}
       >
         <Toolbar sx={{ minHeight: '100px' }}>
-          <Box
-              component="div"
-              sx={{
-                flexGrow: 1,
-                display: 'flex',
-                alignItems: 'center'
-              }}
-          >
-            <img
-                src="/Lab2.png"
-                alt="Logo"
-                style={{ height: '80px', objectFit: 'contain' }}
-            />
+          <Box component="div" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+            <img src="/Lab2.png" alt="Logo" style={{ height: '80px', objectFit: 'contain' }} />
           </Box>
         </Toolbar>
 
@@ -136,7 +138,7 @@ const Sidebar = ({ user }) => {
                     width: 80,
                     height: 80,
                     margin: '0 auto 1rem',
-                    bgcolor: '#dd2825'
+                    bgcolor: '#dd2825',
                   }}
               >
                 {(!user.profilePicture && !user.faceImage) && user.firstName?.charAt(0)}
@@ -160,11 +162,11 @@ const Sidebar = ({ user }) => {
                         '&.Mui-selected': {
                           backgroundColor: '#dd2825',
                           color: 'white',
-                          '& .MuiListItemIcon-root': { color: 'white' }
+                          '& .MuiListItemIcon-root': { color: 'white' },
                         },
                         '&:hover': {
-                          backgroundColor: '#c42020'
-                        }
+                          backgroundColor: '#c42020',
+                        },
                       }}
                   >
                     <ListItemIcon>{item.icon}</ListItemIcon>
@@ -175,21 +177,22 @@ const Sidebar = ({ user }) => {
                     <List component="div" disablePadding>
                       {item.subItems.map((subItem) => (
                           <ListItemButton
-                              key={subItem.text}
-                              sx={{ pl: 4 }}
-                              selected={location.pathname === subItem.path}
-                              onClick={() => navigate(subItem.path)}
-                              sx={{
-                                '&.Mui-selected': {
-                                  backgroundColor: '#dd2825',
-                                  color: 'white',
-                                  '& .MuiListItemIcon-root': { color: 'white' }
-                                },
-                                '&:hover': {
-                                  backgroundColor: '#c42020'
-                                }
-                              }}
-                          >
+                          key={subItem.text}
+                          selected={location.pathname === subItem.path}
+                          onClick={() => navigate(subItem.path)}
+                          sx={{
+                            pl: 4,
+                            '&.Mui-selected': {
+                              backgroundColor: '#dd2825',
+                              color: 'white',
+                              '& .MuiListItemIcon-root': { color: 'white' },
+                            },
+                            '&:hover': {
+                              backgroundColor: '#c42020',
+                            },
+                          }}
+                        >
+                        
                             <ListItemIcon>{subItem.icon}</ListItemIcon>
                             <ListItemText primary={subItem.text} />
                           </ListItemButton>
@@ -203,8 +206,8 @@ const Sidebar = ({ user }) => {
                 onClick={handleLogout}
                 sx={{
                   '&:hover': {
-                    backgroundColor: '#c42020'
-                  }
+                    backgroundColor: '#c42020',
+                  },
                 }}
             >
               <ListItemIcon>

@@ -1,7 +1,7 @@
 // config/db.js
 const mongoose = require('mongoose');
 
-const MONGO_URI = 'mongodb://127.0.0.1:27017/medinaLab';
+const MONGO_URI = 'mongodb://127.0.0.1:27017/medinaLabTest';
 
 // Préparer le changement à venir dans Mongoose 7
 mongoose.set('strictQuery', true);  // ou false, selon ta préférence

@@ -8,6 +8,7 @@
         "dev": "nodemon app.js"
     },
     "dependencies": {
+        "@google/generative-ai": "^0.24.0",
         "axios": "^1.8.4",
         "bcryptjs": "^2.4.3",
         "canvas": "^3.1.0",
@@ -23,6 +24,7 @@
         "face-api.js": "^0.22.2",
         "google-auth-library": "^9.15.1",
         "jsonwebtoken": "^8.5.1",
+        "jspdf": "^3.0.1",
         "mailtrap": "^3.4.0",
         "mongoose": "^6.13.8",
         "multer": "^1.4.5-lts.1",
@@ -31,7 +33,6 @@
         "nodemon": "^3.1.9",
         "passport": "^0.7.0",
         "passport-github2": "^0.1.12",
-        "passport-google-oauth20": "^2.0.0",
-        "@google/generative-ai": "^0.24.0"
+        "passport-google-oauth20": "^2.0.0"
     }
 }

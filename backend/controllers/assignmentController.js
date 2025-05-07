@@ -140,72 +140,113 @@ exports.submitFinalAssignment = async (req, res) => {
     try {
         const ProjectApplication = require('../models/projectApplicationModel');
         const Project = require('../models/projectModel');
+        const Team = require('../models/teamModel');
 
         const { teamName, projectName } = req.body;
 
-        if (!teamName || !projectName) {
-            return res.status(400).json({ message: 'Team name and project name are required' });
+        const team = await Team.findOne({ name: teamName });
+        if (!team) {
+            return res.status(404).json({ message: 'Team not found' });
         }
 
-        console.log(`Assigning team "${teamName}" to project "${projectName}"`);
-
-        // Find the project
         const project = await Project.findOne({ name: projectName });
         if (!project) {
             return res.status(404).json({ message: 'Project not found' });
         }
 
-        // Get all unique student IDs in the team
-        const studentIds = await ProjectApplication.distinct('studentRef', { teamName });
+        const studentIds = team.members.map(m => m.user.toString());
         if (studentIds.length === 0) {
-            return res.status(404).json({ message: 'No students found in this team' });
+            return res.status(400).json({ message: 'Team has no members' });
         }
 
         console.log(`Processing ${studentIds.length} students in team "${teamName}"`);
 
-        // Process each student in the team
-        for (const studentId of studentIds) {
-            // Check for existing application to this project
-            const existingApp = await ProjectApplication.findOne({
-                studentRef: studentId,
-                projectRef: project._id
-            });
-
-            if (existingApp) {
-                // Update existing application to ACCEPTED
-                console.log(`Updating existing application ${existingApp._id} for student ${studentId}`);
-                await ProjectApplication.findByIdAndUpdate(
-                    existingApp._id,
-                    { status: 'ACCEPTED' },
-                    { new: true }
-                );
-            } else {
-                // Create new application
-                console.log(`Creating new application for student ${studentId} on project ${project._id}`);
-                await ProjectApplication.create({
-                    studentRef: studentId,
-                    projectRef: project._id,
-                    teamName: teamName,
-                    status: 'ACCEPTED',
-                    motivationLetter: 'Assigned by tutor', // Set default or required fields
-                    priority: 1 // Adjust as needed
-                });
-            }
-
-            // Delete all other applications for this student to other projects
-            const deleteResult = await ProjectApplication.deleteMany({
-                studentRef: studentId,
-                projectRef: { $ne: project._id }
-            });
-            console.log(`Deleted ${deleteResult.deletedCount} old applications for student ${studentId}`);
+        if (!project.teamRef.includes(team._id)) {
+            project.teamRef.push(team._id);
+            await project.save();
         }
+
+        const bulkOps = studentIds.map(studentId => ({
+            updateOne: {
+                filter: {
+                    studentRef: studentId,
+                    projectRef: project._id
+                },
+                update: {
+                    $set: {
+                        status: 'ACCEPTED',
+                        teamRef: team._id,
+                        motivationLetter: 'Assigned by tutor'
+                    }
+                },
+                upsert: true
+            }
+        }));
+
+        await ProjectApplication.bulkWrite(bulkOps);
+
+        await ProjectApplication.deleteMany({
+            studentRef: { $in: studentIds },
+            projectRef: { $ne: project._id }
+        });
 
         return res.status(200).json({
             message: 'Final assignment submitted successfully',
-            details: `Assigned ${studentIds.length} students in team "${teamName}" to project "${projectName}"`
+            details: `Assigned team "${teamName}" to project "${projectName}"`
         });
     } catch (error) {
         console.error('Error in final assignment submission:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+exports.getStudentProjects = async (req, res) => {
+    try {
+        const ProjectApplication = require('../models/projectApplicationModel');
+        const studentId = req.user.id;
+
+        const applications = await ProjectApplication.find({
+            studentRef: studentId,
+            status: 'ACCEPTED'
+        })
+            .populate('projectRef', 'name description startDate endDate status')
+            .populate({
+                path: 'teamName',
+                select: 'teamName members',
+                populate: {
+                    path: 'members.user',
+                    select: 'firstName lastName'
+                }
+            });
+
+        const projectsMap = new Map();
+        applications.forEach(app => {
+            const project = {
+                ...app.projectRef.toObject(),
+                teams: []
+            };
+
+            if (app.teamRef) {
+                project.teams.push({
+                    name: app.teamRef.teamName,
+                    members: app.teamRef.members.map(m => ({
+                        name: `${m.user.firstName} ${m.user.lastName}`,
+                        role: m.role
+                    }))
+                });
+            }
+
+            if (projectsMap.has(app.projectRef._id.toString())) {
+                const existing = projectsMap.get(app.projectRef._id.toString());
+                existing.teams = [...existing.teams, ...project.teams];
+            } else {
+                projectsMap.set(app.projectRef._id.toString(), project);
+            }
+        });
+
+        return res.status(200).json(Array.from(projectsMap.values()));
+    } catch (error) {
+        console.error('Error fetching student projects:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };

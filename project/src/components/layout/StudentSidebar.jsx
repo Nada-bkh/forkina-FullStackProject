@@ -17,7 +17,7 @@ import {
   People as PeopleIcon,
   Assignment as AssignmentIcon,
   AccountCircle as AccountCircleIcon,
-  ExitToApp as ExitToAppIcon,
+  ExitToApp as ExitToAppIcon, Task, Group, Workspaces,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
@@ -55,6 +55,7 @@ const StudentSidebar = ({ user }) => {
     { text: 'Dashboard', icon: <DashboardIcon style={{ color: 'white' }} />, path: '/student' },
     { text: 'Profile', icon: <AccountCircleIcon style={{ color: 'white' }} />, path: '/student/profile' },
     { text: 'Projects', icon: <AssignmentIcon style={{ color: 'white' }} />, path: '/student/projects' },
+    { text: 'Team Projects', icon: <Workspaces style={{ color: 'white' }} />, path: '/student/team-projects' },
     { text: 'Team', icon: <PeopleIcon style={{ color: 'white' }} />, path: '/student/team' },
   ];
 

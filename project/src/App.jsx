@@ -40,6 +40,8 @@ import ProjectApply from "./pages/student/ProjectApply";
 import AiAssignmentPanel from "./pages/tutor/components/AiAssignmentPanel.jsx";
 import EvaluationGrid from "./pages/tutor/EvaluationGrid.jsx";
 import EvaluationDetail from "./pages/tutor/TeamEvaluationView.jsx";
+import TeamProjects from "./pages/student/TeamProjects.jsx";
+import SonarQubeDashboard from "./pages/tutor/SonarQubeDashboard.jsx";
 const theme = createTheme({
   palette: {
     primary: {
@@ -130,8 +132,9 @@ const App = () => (
                 <Route index element={<StudentDashboard />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="projects" element={<StudentProjects />} />
+                <Route path="team-projects" element={<TeamProjects role="STUDENT" />} />
                 <Route path="projects/apply" element={<ProjectApply />} />
-                <Route path="projects/:projectId" element={<ProjectDetails role="STUDENT" />} />
+                <Route path="projects/:projectId" element={<ProjectDetails />} />
                 <Route path="projects/:projectId/tasks" element={<TasksList role="STUDENT" />} />
                 <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetails role="STUDENT" />} />
                 <Route path="tasks" element={<TasksList role="STUDENT" />} />
@@ -156,6 +159,7 @@ const App = () => (
                 <Route path="classes/:classId" element={<ClassDetails />} />
                 <Route path="teams" element={<AiAssignmentPanel />} />
                 <Route path="teams/eval" element={<TeamsList />} />
+                <Route path="sonarqube-dashboard" element={<SonarQubeDashboard />} />
 
               </Route>
 

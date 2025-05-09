@@ -65,5 +65,5 @@ jobs:
         with:
           app-name: 'forkina'
           slot-name: 'Production'
-          package: .
+          package: ./backend
           

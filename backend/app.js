@@ -18,10 +18,14 @@ const milestoneRoutes = require('./routes/milestoneRoutes');
 const evaluationRoutes = require('./routes/evaluationRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const authRoutes = require('./routes/authRoutes');
-const googleAuthRoutes = require('./routes/auth');
+const googleAuthRoutes = require('./routes/auth'); // Handles Google and GitHub OAuth
 const faceDetectionRoutes = require('./routes/faceDetectionRoutes');
 const fileRoutes = require('./routes/fileRoutes');
-const classRoutes = require('./routes/classRoutes'); // Add this line
+const classRoutes = require('./routes/classRoutes');
+const projectRequestRoutes = require('./routes/projectRequestRoutes');
+const projectApplicationRoutes = require('./routes/projectApplicationRoutes');
+const assignmentRoutes = require('./routes/assignments');
+const quizRoutes = require('./routes/quizRoutes');
 
 const app = express();
 
@@ -30,15 +34,17 @@ connectDB();
 
 // Session configuration
 app.use(
-  session({
-    secret: process.env.COOKIE_KEY || 'medinaLab_secure_cookie_key_2024',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-  })
+    session({
+      secret: process.env.COOKIE_KEY || 'medinaLab_secure_cookie_key_2024',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        httpOnly: true,
+        sameSite: 'lax',
+      },
+    })
 );
 
 // Passport middleware
@@ -46,23 +52,26 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Middleware
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(
+    cors({
+      origin: 'http://localhost:5173',
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    })
+);
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Added to handle URL-encoded data if needed
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Serve uploads directory statically
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'Uploads')));
 
 // API Routes
-app.use("/auth", googleAuthRoutes); // Google Auth routes
-app.use("/api/auth", authRoutes);
+app.use('/auth', googleAuthRoutes); // Google and GitHub OAuth routes
+app.use('/api/auth', authRoutes); // Non-OAuth authentication routes (register, login, etc.)
 app.use('/api/users', userRoutes);
 app.use('/api/tutor-resumes', tutorResumeRoutes);
 app.use('/api/student-resumes', studentResumeRoutes);
@@ -74,7 +83,15 @@ app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/face-detection', faceDetectionRoutes);
 app.use('/api/files', fileRoutes);
-app.use('/api/classes', classRoutes); // Add this line
+app.use('/api/classes', classRoutes);
+app.use('/api/project-requests', projectRequestRoutes);
+app.use('/api/project-applications', projectApplicationRoutes);
+app.use('/api/assignments', assignmentRoutes);
+app.use('/api/quiz', quizRoutes);
+app.use('/api/ai', require('./routes/aiRoutes'));
+
+
+
 // Handle React routing, return all requests to React app
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
@@ -88,7 +105,7 @@ app.use((err, req, res, next) => {
 
 // Server startup with port handling
 const startServer = async () => {
-  const PORT = 5001;
+  const PORT = process.env.PORT || 5001;
   try {
     const server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

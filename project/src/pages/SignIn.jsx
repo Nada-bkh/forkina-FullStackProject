@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import { isAuthenticated } from '../utils/authUtils';
 import FaceLogin from '../components/FaceLogin';
 import FaceIcon from '@mui/icons-material/Face';
 
-import { 
+import {
   Box,
   Container,
   TextField,
@@ -64,9 +63,48 @@ const SignIn = () => {
   const [showFaceLogin, setShowFaceLogin] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      navigate('/admin');
-    }
+    const checkAuthStatus = async () => {
+      // Vérifier d'abord si un token existe
+      if (isAuthenticated()) {
+        try {
+          // Récupérer le token
+          const token = localStorage.getItem('token');
+
+          // Appeler l'API pour vérifier le token et obtenir le rôle
+          const response = await fetch('http://localhost:5001/api/auth/me', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.ok) {
+            const userData = await response.json();
+            console.log('SignIn - Utilisateur déjà authentifié:', userData);
+
+            // Rediriger vers le tableau de bord approprié
+            if (userData.role === 'ADMIN') {
+              navigate('/admin');
+            } else if (userData.role === 'STUDENT') {
+              navigate('/student');
+            } else if (userData.role === 'TUTOR') {
+              navigate('/tutor');
+            } else {
+              // Si le rôle n'est pas reconnu, considérer comme étudiant par défaut
+              navigate('/student');
+            }
+          } else {
+            // Si l'API retourne une erreur, le token pourrait être invalide
+            console.log('SignIn - Token invalide');
+            localStorage.removeItem('token');
+          }
+        } catch (error) {
+          console.error('SignIn - Erreur lors de la vérification du token:', error);
+          localStorage.removeItem('token');
+        }
+      }
+    };
+
+    checkAuthStatus();
   }, [navigate]);
 
   useEffect(() => {
@@ -75,7 +113,7 @@ const SignIn = () => {
     if (blockedUntil) {
       // Mettre à jour le temps restant immédiatement
       updateRemainingTime();
-      
+
       // Puis lancer l'intervalle pour mettre à jour chaque seconde
       interval = setInterval(() => {
         if (blockedUntil && blockedUntil < Date.now()) {
@@ -87,23 +125,23 @@ const SignIn = () => {
         }
       }, 1000);
     }
-    
+
     return () => clearInterval(interval);
   }, [blockedUntil]);
 
   // Fonction pour calculer et mettre à jour le temps restant
   const updateRemainingTime = () => {
     if (!blockedUntil) return;
-    
+
     const timeLeft = blockedUntil - Date.now();
     if (timeLeft <= 0) {
       setRemainingTime({ minutes: 0, seconds: 0 });
       return;
     }
-    
+
     const minutes = Math.floor(timeLeft / 60000);
     const seconds = Math.floor((timeLeft % 60000) / 1000);
-    
+
     setRemainingTime({ minutes, seconds });
   };
 
@@ -118,12 +156,12 @@ const SignIn = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
-    
+
     // Si le compte est bloqué, empêcher la soumission
     if (blockedUntil && blockedUntil > Date.now()) {
       return;
     }
-    
+
     try {
       const response = await fetch('http://localhost:5001/api/auth/login', {
         method: 'POST',
@@ -147,7 +185,7 @@ const SignIn = () => {
           // Mettre à jour le nombre de tentatives restantes
           setRemainingAttempts(data.remainingAttempts);
         }
-        
+
         throw new Error(data.message || 'Failed to login');
       }
 
@@ -157,7 +195,7 @@ const SignIn = () => {
 
       // Save token
       localStorage.setItem('token', data.token);
-      
+
       // Redirection basée sur le rôle de l'utilisateur
       const userRole = data.user.role;
       if (userRole === 'ADMIN') {
@@ -170,7 +208,7 @@ const SignIn = () => {
         // Default fallback
         navigate('/admin');
       }
-      
+
     } catch (err) {
       setError(err.message);
       console.error('Login error:', err);
@@ -188,10 +226,10 @@ const SignIn = () => {
   const handleFaceLoginSuccess = (data) => {
     // Save token
     localStorage.setItem('token', data.token);
-    
+
     // Close the dialog
     setShowFaceLogin(false);
-    
+
     // Redirect to admin dashboard
     navigate('/admin');
   };
@@ -201,196 +239,210 @@ const SignIn = () => {
   };
 
   const githubLogin = () => {
-    window.open(
-      "http://localhost:5001/auth/github",
-      "_self"
-    );
+    console.log("Tentative de connexion GitHub...");
+    console.log("Redirection vers: http://localhost:5001/auth/github");
+    try {
+      window.open(
+          "http://localhost:5001/auth/github",
+          "_self"
+      );
+    } catch (error) {
+      console.error("Erreur lors de la redirection GitHub:", error);
+      setError("Erreur de connexion GitHub: " + error.message);
+    }
   };
 
   return (
-    <Container component="main" maxWidth="xs">
-      <StyledPaper elevation={6}>
-      <Box
-    component="div"
-    sx={{
-      flexGrow: 1,
-      display: 'flex',
-      alignItems: 'center'
-    }}
-  >
-    <img 
-    src="logo.png" 
-    alt="" 
-    style={{ height: '70px' }} 
-  />
-    </Box>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2, width: '100%' }}>
-            {error}
-          </Alert>
-        )}
-        {blockedUntil && blockedUntil > Date.now() && (
-          <Alert severity="warning" sx={{ mb: 2, width: '100%' }}>
-            <div>
-              <strong>Compte temporairement bloqué</strong>
-              <div>
-                Après 3 tentatives infructueuses, votre compte est bloqué pendant 2 minutes.
-              </div>
-              <div style={{ marginTop: '10px', marginBottom: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
-                  <div style={{ 
-                    display: 'inline-block', 
-                    padding: '5px 12px', 
-                    background: '#f3f3f3',
-                    borderRadius: '4px',
-                    fontFamily: 'monospace',
-                    fontWeight: 'bold',
-                    fontSize: '1.2rem',
-                    color: '#dd2825'
-                  }}>
-                    {remainingTime.minutes}:{remainingTime.seconds < 10 ? `0${remainingTime.seconds}` : remainingTime.seconds}
+      <Container component="main" maxWidth="xs">
+        <StyledPaper elevation={6}>
+          <Box
+              component="div"
+              sx={{
+                flexGrow: 1,
+                display: 'flex',
+                alignItems: 'center'
+              }}
+          >
+            <img
+                src="logo.png"
+                alt=""
+                style={{ height: '70px' }}
+            />
+          </Box>
+          {error && (
+              <Alert severity="error" sx={{ mb: 2, width: '100%' }}>
+                {error}
+              </Alert>
+          )}
+          {blockedUntil && blockedUntil > Date.now() && (
+              <Alert severity="warning" sx={{ mb: 2, width: '100%' }}>
+                <div>
+                  <strong>Compte temporairement bloqué</strong>
+                  <div>
+                    Après 3 tentatives infructueuses, votre compte est bloqué pendant 2 minutes.
+                  </div>
+                  <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
+                      <div style={{
+                        display: 'inline-block',
+                        padding: '5px 12px',
+                        background: '#f3f3f3',
+                        borderRadius: '4px',
+                        fontFamily: 'monospace',
+                        fontWeight: 'bold',
+                        fontSize: '1.2rem',
+                        color: '#dd2825'
+                      }}>
+                        {remainingTime.minutes}:{remainingTime.seconds < 10 ? `0${remainingTime.seconds}` : remainingTime.seconds}
+                      </div>
+                    </div>
+                    <div>
+                      Réessayez après lexpiration du délai ou{' '}
+                      <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{ fontWeight: 'bold' }}>
+                        réinitialisez votre mot de passe
+                      </Link>.
+                    </div>
                   </div>
                 </div>
-                <div>
-                  Réessayez après lexpiration du délai ou{' '}
-                  <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{ fontWeight: 'bold' }}>
-                    réinitialisez votre mot de passe
-                  </Link>.
-                </div>
-              </div>
-            </div>
-          </Alert>
-        )}
-        {!blockedUntil && remainingAttempts < 3 && remainingAttempts > 0 && (
-          <Alert severity="info" sx={{ mb: 2, width: '100%' }}>
-            {remainingAttempts === 1 ? (
-              <strong>Attention ! Dernière tentative avant blocage temporaire du compte.</strong>
-            ) : (
-              <div>Il vous reste {remainingAttempts} tentatives avant le blocage temporaire du compte.</div>
-            )}
-          </Alert>
-        )}
-        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            id="email"
-            label="Email"
-            name="email"
-            autoComplete="email"
-            autoFocus
-            value={formData.email}
-            onChange={handleChange}
-            sx={{ mb: 2 }}
-            disabled={blockedUntil && blockedUntil > Date.now()}
-          />
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            name="password"
-            label="Password"
-            type="password"
-            id="password"
-            autoComplete="current-password"
-            value={formData.password}
-            onChange={handleChange}
-            sx={{ mb: 2 }}
-            disabled={blockedUntil && blockedUntil > Date.now()}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                value="remember"
-                name="rememberMe"
-                checked={formData.rememberMe}
+              </Alert>
+          )}
+          {!blockedUntil && remainingAttempts < 3 && remainingAttempts > 0 && (
+              <Alert severity="info" sx={{ mb: 2, width: '100%' }}>
+                {remainingAttempts === 1 ? (
+                    <strong>Attention ! Dernière tentative avant blocage temporaire du compte.</strong>
+                ) : (
+                    <div>Il vous reste {remainingAttempts} tentatives avant le blocage temporaire du compte.</div>
+                )}
+              </Alert>
+          )}
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }} noValidate>
+            <TextField
+                margin="normal"
+                required
+                fullWidth
+                id="email"
+                label="Email"
+                name="email"
+                autoComplete="email"
+                autoFocus
+                value={formData.email}
                 onChange={handleChange}
-                color="primary"
-              />
-            }
-            label="Remember Me"
+                sx={{ mb: 2 }}
+                disabled={blockedUntil && blockedUntil > Date.now()}
+            />
+            <TextField
+                margin="normal"
+                required
+                fullWidth
+                name="password"
+                label="Password"
+                type="password"
+                id="password"
+                autoComplete="current-password"
+                value={formData.password}
+                onChange={handleChange}
+                sx={{ mb: 2 }}
+                disabled={blockedUntil && blockedUntil > Date.now()}
+            />
+            <FormControlLabel
+                control={
+                  <Checkbox
+                      value="remember"
+                      name="rememberMe"
+                      checked={formData.rememberMe}
+                      onChange={handleChange}
+                      color="primary"
+                  />
+                }
+                label="Remember Me"
+            />
+              <StyledButton
+              type="submit"
+              fullWidth
+              variant="contained"
+              color="primary"
+              sx={{ 
+                  mt: 2, 
+                  mb: 2,
+                  color: 'white', // This sets the text color to white
+                  '&:hover': {
+                      color: 'white' // Ensures text stays white on hover
+                  }
+              }}
+              disabled={blockedUntil && blockedUntil > Date.now()}
+          >
+              Sign In
+          </StyledButton>
+
+            <Box sx={{ my: 2, textAlign: 'center' }}>
+              <Divider sx={{ my: 2 }}>
+                <Typography color="textSecondary">OR</Typography>
+              </Divider>
+            </Box>
+
+            <StyledButton
+                fullWidth
+                variant="outlined"
+                startIcon={<FaceIcon />}
+                onClick={handleFaceLogin}
+                sx={{ mb: 2 }}
+            >
+              Sign in with Face Recognition
+            </StyledButton>
+
+            <StyledButton
+                fullWidth
+                variant="outlined"
+                startIcon={<GoogleIcon />}
+                onClick={googleLogin}
+            >
+              Sign in using Google
+            </StyledButton>
+
+            <StyledButton
+                fullWidth
+                variant="outlined"
+                startIcon={<GitHubIcon />}
+                onClick={githubLogin}
+                style={{ marginTop: '1px' }}
+            >
+              Sign in using GitHub
+            </StyledButton>
+
+            <Box sx={{ mt: 2, textAlign: 'center' }}>
+              <Link
+                  href="#"
+                  variant="body2"
+                  onClick={() => navigate('/forgot-password')}
+                  sx={{ display: 'block', mb: 1 }}
+              >
+                I forgot my password
+              </Link>
+              <Link
+                  href="#"
+                  variant="body2"
+                  onClick={() => navigate('/signup')}
+
+              >
+                Register a new membership
+              </Link>
+            </Box>
+          </Box>
+        </StyledPaper>
+
+        {/* Face Login Dialog */}
+        <Dialog
+            open={showFaceLogin}
+            onClose={handleCancelFaceLogin}
+            fullWidth
+            maxWidth="sm"
+        >
+          <FaceLogin
+              onLogin={handleFaceLoginSuccess}
+              onCancel={handleCancelFaceLogin}
           />
-<StyledButton
-  type="submit"
-  fullWidth
-  variant="contained"
-  color="primary"
-  sx={{ mt: 2, mb: 2 }}
-  disabled={blockedUntil && blockedUntil > Date.now()}
->
-  Sign In
-</StyledButton>
-          
-          <Box sx={{ my: 2, textAlign: 'center' }}>
-            <Divider sx={{ my: 2 }}>
-              <Typography color="textSecondary">OR</Typography>
-            </Divider>
-          </Box>
-
-          <StyledButton
-            fullWidth
-            variant="outlined"
-            startIcon={<FaceIcon />}
-            onClick={handleFaceLogin}
-            sx={{ mb: 2 }}
-          >
-            Sign in with Face Recognition
-          </StyledButton>
-
-          <StyledButton
-            fullWidth
-            variant="outlined"
-            startIcon={<GoogleIcon />}
-            onClick={googleLogin}
-          >
-            Sign in using Google
-          </StyledButton>
-
-          <StyledButton
-            fullWidth
-            variant="outlined"
-            startIcon={<GitHubIcon />}
-            onClick={githubLogin}
-            style={{ marginTop: '1px' }}
-          >
-            Sign in using GitHub
-          </StyledButton>
-
-          <Box sx={{ mt: 2, textAlign: 'center' }}>
-            <Link
-              href="#"
-              variant="body2"
-              onClick={() => navigate('/forgot-password')}
-              sx={{ display: 'block', mb: 1 }}
-            >
-              I forgot my password
-            </Link>
-            <Link
-              href="#"
-              variant="body2"
-              onClick={() => navigate('/signup')}
-              
-            >
-              Register a new membership
-            </Link>
-          </Box>
-        </Box>
-      </StyledPaper>
-
-      {/* Face Login Dialog */}
-      <Dialog 
-        open={showFaceLogin} 
-        onClose={handleCancelFaceLogin}
-        fullWidth
-        maxWidth="sm"
-      >
-        <FaceLogin 
-          onLogin={handleFaceLoginSuccess} 
-          onCancel={handleCancelFaceLogin} 
-        />
-      </Dialog>
-    </Container>
+        </Dialog>
+      </Container>
   );
 };
 

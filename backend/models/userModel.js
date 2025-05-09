@@ -9,32 +9,54 @@ const UserRole = {
   TUTOR: 'TUTOR',
   ADMIN: 'ADMIN'
 };
-
+const DEPARTMENT = {
+  ARCTIC: "ArcTIC",
+  DS: "DS",
+  ERP_BI: "ERP/BI",
+  GAMIX: "Gamix",
+  INFINI: "InFini",
+  NIDS: "NIDS",
+  SLEAM: "SLEAM",
+  SAE: "SAE",
+  SE: "SE",
+  SIM: "SIM",
+  TWIN: "TWIN",
+};
 const userSchema = new Schema(
   {
     firstName: { type: String, required: true },
-    // Reference to Class model instead of a string
-    classe: { 
+    birthdate: { type: Date,
+      required: false
+    },
+      githubUsername: {
+          type: String,
+          unique: true,
+          sparse: true,
+      },
+      githubToken: {
+          type: String,
+      },
+    classe: {
       type: Schema.Types.ObjectId,
       ref: 'Class',
       default: null // Default to null if not assigned to a class
     },
     lastName: { type: String, required: true },
-    email: { 
-      type: String, 
-      required: true, 
+    email: {
+      type: String,
+      required: true,
       unique: true,
       lowercase: true,
       trim: true
     },
-    password: { 
-      type: String, 
+    password: {
+      type: String,
       required: function() {
         return !this.isGoogleUser && !this.isGithubUser; // Password not required for OAuth users
       }
     },
     // CIN - Carte d'Identité Nationale
-    cin: { 
+    cin: {
       type: String,
       trim: true,
       sparse: true,
@@ -44,14 +66,17 @@ const userSchema = new Schema(
       }
     },
     // Classe de l'étudiant
-    classe: { 
-      type: String,
-      default: "--" // Par défaut, pas encore affecté
-    },
+
     educationLevel: {
       type: String,
       enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'],
       default: 'BEGINNER'
+    },
+    department: {
+      type: String,
+      enum: Object.values(DEPARTMENT),
+
+      default: undefined
     },
     isGoogleUser: { type: Boolean, default: false },
     isGithubUser: { type: Boolean, default: false },
@@ -86,7 +111,7 @@ const userSchema = new Schema(
       type: String,
     },
   },
-  { 
+  {
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
@@ -114,7 +139,7 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 // Generate JWT token
 userSchema.methods.generateToken = function() {
   return jwt.sign(
-    { 
+    {
       id: this._id,
       email: this.email,
       role: this.userRole,

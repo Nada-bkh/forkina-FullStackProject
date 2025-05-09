@@ -28,13 +28,18 @@ const ProjectEdit = ({ role = getUserRole() }) => {
       try {
         setLoading(true);
         const project = await fetchProjectById(projectId);
+        console.log('Fetched project data:', project);
+        
         setFormData({
-          name: project.name, description: project.description || '',
-          startDate: project.startDate ? dayjs(project.startDate) : dayjs(),
-          endDate: project.endDate ? dayjs(project.endDate) : dayjs().add(30, 'day'),
-          status: project.status || 'PENDING', tags: project.tags || []
+          name: project?.name || '', 
+          description: project?.description || '',
+          startDate: project?.startDate ? dayjs(project.startDate) : dayjs(),
+          endDate: project?.endDate ? dayjs(project.endDate) : dayjs().add(30, 'day'),
+          status: project?.status || 'PENDING', 
+          tags: project?.tags || []
         });
       } catch (err) {
+        console.error('Error fetching project:', err);
         setError(err.message);
       } finally {
         setLoading(false);

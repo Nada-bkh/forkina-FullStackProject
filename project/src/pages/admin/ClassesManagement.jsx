@@ -1,5 +1,4 @@
-// src/pages/admin/ClassesManagement.jsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Typography,
@@ -20,75 +19,126 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Grid,
+  Autocomplete,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Grid,
-  Chip,
-  Autocomplete
+  useTheme,
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, GroupAdd as GroupAddIcon } from '@mui/icons-material';
-import { fetchClasses, createClass, updateClass, deleteClass, addStudentsToClass } from '../../api/classApi';
-import { fetchUsers } from '../../api/userApi';
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  GroupAdd as GroupAddIcon,
+} from '@mui/icons-material';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  fetchClasses,
+  createClass,
+  updateClass,
+  deleteClass,
+  addStudentsToClass,
+} from '../../api/classApi';
+import { fetchUsers, fetchUnassignedStudents, getCurrentUser } from '../../api/userApi';
 
 const ClassesManagement = () => {
-  const [classes, setClasses] = useState([]);
-  const [tutors, setTutors] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const theme = useTheme();
+  const queryClient = useQueryClient();
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openAddStudentsDialog, setOpenAddStudentsDialog] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
-  const [formData, setFormData] = useState({ name: '', description: '', tutorId: '' });
+  const [formData, setFormData] = useState({ name: '', description: '', tutorIds: [], department: '' });
   const [selectedStudents, setSelectedStudents] = useState([]);
+  const [error, setError] = useState(null);
+  const [availableStudents, setAvailableStudents] = useState([]);
 
-  useEffect(() => {
-    fetchAllClasses();
-    fetchTutorsAndStudents();
-  }, []);
+  // Fetch current user
+  const { data: currentUser, isLoading: userLoading, error: userError } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: getCurrentUser,
+  });
 
-  const fetchAllClasses = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const data = await fetchClasses();
-      setClasses(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Fetch all classes
+  const { data: classes = [], isLoading: classesLoading, error: classesError } = useQuery({
+    queryKey: ['classes'],
+    queryFn: fetchClasses,
+  });
 
-  const fetchTutorsAndStudents = async () => {
-    try {
-      const tutorsData = await fetchUsers('TUTOR');
-      const studentsData = await fetchUsers('STUDENT');
-      setTutors(tutorsData);
-      setStudents(studentsData);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+  // Fetch tutors
+  const { data: tutors = [], error: tutorsError } = useQuery({
+    queryKey: ['tutors'],
+    queryFn: () => fetchUsers('TUTOR'),
+  });
 
+  // Fetch unassigned students
+  const { data: unassignedStudents = [], error: studentsError } = useQuery({
+    queryKey: ['unassignedStudents'],
+    queryFn: fetchUnassignedStudents,
+  });
+
+  const combinedError = classesError || tutorsError || studentsError || userError || error;
+
+  // Mutations
+  const createClassMutation = useMutation({
+    mutationFn: (classData) => createClass(classData),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['classes']);
+      setOpenCreateDialog(false);
+      setFormData({ name: '', description: '', tutorIds: [], department: '' });
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  const updateClassMutation = useMutation({
+    mutationFn: ({ classId, classData }) => updateClass(classId, classData),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['classes']);
+      setOpenEditDialog(false);
+      setSelectedClass(null);
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  const deleteClassMutation = useMutation({
+    mutationFn: deleteClass,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['classes']);
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  const addStudentsMutation = useMutation({
+    mutationFn: ({ classId, studentIds }) => addStudentsToClass(classId, studentIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['classes']);
+      queryClient.invalidateQueries(['unassignedStudents']);
+      setOpenAddStudentsDialog(false);
+      setSelectedClass(null);
+      setSelectedStudents([]);
+      setAvailableStudents([]);
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  // Handlers
   const handleOpenCreateDialog = () => {
-    setFormData({ name: '', description: '', tutorId: '' });
+    setFormData({ name: '', description: '', tutorIds: [], department: '' });
     setOpenCreateDialog(true);
   };
 
-  const handleCloseCreateDialog = () => {
-    setOpenCreateDialog(false);
-  };
+  const handleCloseCreateDialog = () => setOpenCreateDialog(false);
 
   const handleOpenEditDialog = (classItem) => {
+    const tutorIds = classItem.tutors?.map((tutor) => tutor._id) || [];
     setSelectedClass(classItem);
     setFormData({
       name: classItem.name,
       description: classItem.description || '',
-      tutorId: classItem.tutor._id
+      tutorIds,
+      department: classItem.department || '',
     });
     setOpenEditDialog(true);
   };
@@ -101,94 +151,130 @@ const ClassesManagement = () => {
   const handleOpenAddStudentsDialog = (classItem) => {
     setSelectedClass(classItem);
     setSelectedStudents([]);
+    setAvailableStudents(unassignedStudents);
     setOpenAddStudentsDialog(true);
   };
 
   const handleCloseAddStudentsDialog = () => {
     setOpenAddStudentsDialog(false);
     setSelectedClass(null);
+    setSelectedStudents([]);
+    setAvailableStudents([]);
   };
 
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleCreateClass = async (e) => {
-    e.preventDefault();
-    try {
-      const newClass = await createClass(formData);
-      setClasses([...classes, newClass]);
-      handleCloseCreateDialog();
-    } catch (err) {
-      setError(err.message);
+  const handleFormChange = (e, newValue, field) => {
+    if (field === 'tutorIds') {
+      const newTutorIds = newValue.map((tutor) => tutor._id);
+      setFormData((prev) => ({ ...prev, tutorIds: newTutorIds }));
+    } else {
+      const { name, value } = e.target;
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
-  const handleUpdateClass = async (e) => {
+  const handleCreateClass = (e) => {
     e.preventDefault();
-    try {
-      const updatedClass = await updateClass(selectedClass._id, formData);
-      setClasses(classes.map(c => (c._id === selectedClass._id ? updatedClass : c)));
-      handleCloseEditDialog();
-    } catch (err) {
-      setError(err.message);
+    if (formData.tutorIds.length === 0) {
+      setError('At least one tutor is required.');
+      return;
     }
+    if (!formData.name) {
+      setError('Class name is required.');
+      return;
+    }
+    if (!formData.department) {
+      setError('Department is required.');
+      return;
+    }
+    createClassMutation.mutate(formData);
   };
 
-  const handleDeleteClass = async (classId) => {
+  const handleUpdateClass = (e) => {
+    e.preventDefault();
+    if (formData.tutorIds.length === 0) {
+      setError('At least one tutor is required.');
+      return;
+    }
+    if (!formData.name) {
+      setError('Class name is required.');
+      return;
+    }
+    if (!formData.department) {
+      setError('Department is required.');
+      return;
+    }
+    updateClassMutation.mutate({ classId: selectedClass._id, classData: formData });
+  };
+
+  const handleDeleteClass = (classId) => {
     if (window.confirm('Are you sure you want to delete this class?')) {
-      try {
-        await deleteClass(classId);
-        setClasses(classes.filter(c => c._id !== classId));
-      } catch (err) {
-        setError(err.message);
-      }
+      deleteClassMutation.mutate(classId);
     }
   };
 
-  const handleAddStudents = async () => {
-    try {
-      const studentIds = selectedStudents.map(student => student._id);
-      const updatedClass = await addStudentsToClass(selectedClass._id, studentIds);
-      setClasses(classes.map(c => (c._id === selectedClass._id ? updatedClass : c)));
-      fetchAllClasses();
-
-      handleCloseAddStudentsDialog();
-    } catch (err) {
-      setError(err.message);
+  const handleAddStudents = () => {
+    if (currentUser?.userRole !== 'ADMIN') {
+      setError('Only admins can add students to classes.');
+      return;
     }
+    const studentIds = selectedStudents.map((student) => student._id);
+    addStudentsMutation.mutate({ classId: selectedClass._id, studentIds });
+  };
+
+  // Filter tutors by department
+  const getTutorsForSelectedDepartment = () => {
+    if (!formData.department) return tutors;
+    return tutors.filter((tutor) => tutor.department === formData.department);
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h5" sx={{ color: '#dd2825' }}>
-          Classes Management
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenCreateDialog}
-          sx={{
-            backgroundColor: '#dd2825',
-            color: 'white',
-            '&:hover': { backgroundColor: '#c42020' }
-          }}
-        >
-          Create Class
-        </Button>
+    <Box sx={{ p: 3, backgroundColor: theme.palette.background.default }}>
+      {/* Header */}
+      <Box
+        sx={{
+          mb: 4,
+          p: 3,
+          borderRadius: 2,
+          background: `linear-gradient(45deg, ${theme.palette.error.dark} 0%, ${theme.palette.error.light} 100%)`,
+          boxShadow: 3,
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h4" sx={{ color: 'white', fontWeight: 700 }}>
+            Classes Management
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenCreateDialog}
+            sx={{
+              px: 4,
+              py: 1.5,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontSize: '1.1rem',
+              background: `linear-gradient(45deg, ${theme.palette.error.dark} 30%, ${theme.palette.error.light} 90%)`,
+              color: 'white',
+              '&:hover': {
+                background: `linear-gradient(45deg, ${theme.palette.error.dark} 60%, ${theme.palette.error.light} 100%)`,
+              },
+            }}
+            disabled={currentUser?.userRole !== 'ADMIN'}
+          >
+            New Class
+          </Button>
+        </Box>
       </Box>
 
-      {error && (
+      {userLoading || classesLoading ? <LinearProgress /> : null}
+
+      {combinedError && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
+          {combinedError.message || 'An error occurred'}
         </Alert>
       )}
 
-      {loading ? (
-        <LinearProgress />
-      ) : classes.length === 0 ? (
+      {!userLoading && !classesLoading && classes.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6">No Classes Found</Typography>
           <Typography variant="body1" sx={{ mt: 1 }}>
@@ -196,16 +282,19 @@ const ClassesManagement = () => {
           </Typography>
         </Paper>
       ) : (
-        <TableContainer component={Paper}>
+        <TableContainer component={Paper} sx={{ boxShadow: 3 }}>
           <Table>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                <TableCell>Class Name</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell>Tutor</TableCell>
-                <TableCell>Number of Students</TableCell>
-                <TableCell>Created By</TableCell>
-                <TableCell align="right">Actions</TableCell>
+            <TableHead sx={{ backgroundColor: theme.palette.error.light }}>
+              <TableRow>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Class Name</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Description</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Department</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Tutor</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}># Students</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Created By</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">
+                  Actions
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -213,9 +302,18 @@ const ClassesManagement = () => {
                 <TableRow key={classItem._id} hover>
                   <TableCell>{classItem.name}</TableCell>
                   <TableCell>{classItem.description || 'No description'}</TableCell>
-                  <TableCell>{classItem.tutor ? `${classItem.tutor.firstName} ${classItem.tutor.lastName}` : 'Not assigned'}</TableCell>
-                  <TableCell>{classItem.students.length}</TableCell>
-                  <TableCell>{classItem.createdBy ? `${classItem.createdBy.firstName} ${classItem.createdBy.lastName}` : 'Unknown'}</TableCell>
+                  <TableCell>{classItem.department || 'Not assigned'}</TableCell>
+                  <TableCell>
+                    {classItem.tutors && classItem.tutors.length > 0
+                      ? classItem.tutors.map((tutor) => `${tutor.firstName} ${tutor.lastName}`).join(', ')
+                      : 'Not assigned'}
+                  </TableCell>
+                  <TableCell>{classItem.students?.length || 0}</TableCell>
+                  <TableCell>
+                    {classItem.createdBy
+                      ? `${classItem.createdBy.firstName} ${classItem.createdBy.lastName}`
+                      : 'Unknown'}
+                  </TableCell>
                   <TableCell align="right">
                     <Tooltip title="Edit Class">
                       <IconButton onClick={() => handleOpenEditDialog(classItem)} size="small">
@@ -228,7 +326,11 @@ const ClassesManagement = () => {
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Delete Class">
-                      <IconButton onClick={() => handleDeleteClass(classItem._id)} size="small" color="error">
+                      <IconButton
+                        onClick={() => handleDeleteClass(classItem._id)}
+                        size="small"
+                        color="error"
+                      >
                         <DeleteIcon />
                       </IconButton>
                     </Tooltip>
@@ -254,6 +356,8 @@ const ClassesManagement = () => {
                   onChange={handleFormChange}
                   fullWidth
                   required
+                  error={!formData.name && error}
+                  helperText={!formData.name && error ? 'Class name is required' : ''}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -268,27 +372,65 @@ const ClassesManagement = () => {
                 />
               </Grid>
               <Grid item xs={12}>
-                <FormControl fullWidth required>
-                  <InputLabel>Tutor</InputLabel>
+                <FormControl fullWidth required error={!formData.department && error}>
+                  <InputLabel>Department</InputLabel>
                   <Select
-                    name="tutorId"
-                    value={formData.tutorId}
+                    name="department"
+                    value={formData.department}
                     onChange={handleFormChange}
-                    label="Tutor"
+                    label="Department"
                   >
-                    {tutors.map(tutor => (
-                      <MenuItem key={tutor._id} value={tutor._id}>
-                        {tutor.firstName} {tutor.lastName}
-                      </MenuItem>
-                    ))}
+                    <MenuItem value="ArcTIC">Architecture IT & Cloud Computing</MenuItem>
+                    <MenuItem value="DS">Data Science</MenuItem>
+                    <MenuItem value="ERP/BI">Enterprise Resource Planning & Business Intelligence</MenuItem>
+                    <MenuItem value="Gamix">Gaming & Immersive eXperience</MenuItem>
+                    <MenuItem value="InFini">Informatique Financière Et Ingénierie</MenuItem>
+                    <MenuItem value="NIDS">Network Infrastructure and Data Security</MenuItem>
+                    <MenuItem value="SLEAM">Systèmes et Logiciels Embarqués Ambiants et Mobiles</MenuItem>
+                    <MenuItem value="SAE">Software Architecture Engineering</MenuItem>
+                    <MenuItem value="SE">Software Engineering</MenuItem>
+                    <MenuItem value="SIM">Systèmes Informatiques et Mobiles</MenuItem>
+                    <MenuItem value="TWIN">Technologies du Web et de l’Internet</MenuItem>
                   </Select>
+                  {!formData.department && error && (
+                    <Typography color="error" variant="caption">
+                      Department is required
+                    </Typography>
+                  )}
                 </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <Autocomplete
+                  multiple
+                  options={getTutorsForSelectedDepartment()}
+                  getOptionLabel={(option) => `${option.firstName} ${option.lastName}`}
+                  value={tutors.filter((tutor) => formData.tutorIds.includes(tutor._id))}
+                  onChange={(e, newValue) => handleFormChange(e, newValue, 'tutorIds')}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Tutors"
+                      placeholder="Select tutors..."
+                      required={formData.tutorIds.length === 0}
+                      error={formData.tutorIds.length === 0 && error}
+                      helperText={
+                        formData.tutorIds.length === 0 && error ? 'At least one tutor is required' : ''
+                      }
+                    />
+                  )}
+                  fullWidth
+                  disabled={!formData.department}
+                />
               </Grid>
             </Grid>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseCreateDialog}>Cancel</Button>
-            <Button type="submit" variant="contained" sx={{ backgroundColor: '#dd2825', color: 'white' }}>
+            <Button
+              type="submit"
+              variant="contained"
+              sx={{ backgroundColor: '#dd2825', color: 'white' }}
+            >
               Create
             </Button>
           </DialogActions>
@@ -309,6 +451,8 @@ const ClassesManagement = () => {
                   onChange={handleFormChange}
                   fullWidth
                   required
+                  error={!formData.name && error}
+                  helperText={!formData.name && error ? 'Class name is required' : ''}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -323,28 +467,66 @@ const ClassesManagement = () => {
                 />
               </Grid>
               <Grid item xs={12}>
-                <FormControl fullWidth required>
-                  <InputLabel>Tutor</InputLabel>
+                <FormControl fullWidth required error={!formData.department && error}>
+                  <InputLabel>Department</InputLabel>
                   <Select
-                    name="tutorId"
-                    value={formData.tutorId}
+                    name="department"
+                    value={formData.department}
                     onChange={handleFormChange}
-                    label="Tutor"
+                    label="Department"
                   >
-                    {tutors.map(tutor => (
-                      <MenuItem key={tutor._id} value={tutor._id}>
-                        {tutor.firstName} {tutor.lastName}
-                      </MenuItem>
-                    ))}
+                    <MenuItem value="ArcTIC">Architecture IT & Cloud Computing</MenuItem>
+                    <MenuItem value="DS">Data Science</MenuItem>
+                    <MenuItem value="ERP/BI">Enterprise Resource Planning & Business Intelligence</MenuItem>
+                    <MenuItem value="Gamix">Gaming & Immersive eXperience</MenuItem>
+                    <MenuItem value="InFini">Informatique Financière Et Ingénierie</MenuItem>
+                    <MenuItem value="NIDS">Network Infrastructure and Data Security</MenuItem>
+                    <MenuItem value="SLEAM">Systèmes et Logiciels Embarqués Ambiants et Mobiles</MenuItem>
+                    <MenuItem value="SAE">Software Architecture Engineering</MenuItem>
+                    <MenuItem value="SE">Software Engineering</MenuItem>
+                    <MenuItem value="SIM">Systèmes Informatiques et Mobiles</MenuItem>
+                    <MenuItem value="TWIN">Technologies du Web et de l’Internet</MenuItem>
                   </Select>
+                  {!formData.department && error && (
+                    <Typography color="error" variant="caption">
+                      Department is required
+                    </Typography>
+                  )}
                 </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <Autocomplete
+                  multiple
+                  options={getTutorsForSelectedDepartment()}
+                  getOptionLabel={(option) => `${option.firstName} ${option.lastName}`}
+                  value={tutors.filter((tutor) => formData.tutorIds.includes(tutor._id))}
+                  onChange={(e, newValue) => handleFormChange(e, newValue, 'tutorIds')}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Tutors"
+                      placeholder="Select tutors..."
+                      required={formData.tutorIds.length === 0}
+                      error={formData.tutorIds.length === 0 && error}
+                      helperText={
+                        formData.tutorIds.length === 0 && error ? 'At least one tutor is required' : ''
+                      }
+                    />
+                  )}
+                  fullWidth
+                  disabled={!formData.department}
+                />
               </Grid>
             </Grid>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseEditDialog}>Cancel</Button>
-            <Button type="submit" variant="contained" sx={{ backgroundColor: '#dd2825', color: 'white' }}>
-              Save Changes
+            <Button
+              type="submit"
+              variant="contained"
+              sx={{ backgroundColor: '#dd2825', color: 'white' }}
+            >
+              Save
             </Button>
           </DialogActions>
         </form>
@@ -356,10 +538,17 @@ const ClassesManagement = () => {
         <DialogContent>
           <Autocomplete
             multiple
-            options={students.filter(student => !selectedClass?.students.some(s => s._id === student._id))}
+            options={availableStudents}
             getOptionLabel={(option) => `${option.firstName} ${option.lastName} (${option.email})`}
             value={selectedStudents}
-            onChange={(event, newValue) => setSelectedStudents(newValue)}
+            onChange={(event, newValue) => {
+              setSelectedStudents(newValue);
+              setAvailableStudents(
+                availableStudents.filter(
+                  (student) => !newValue.some((selected) => selected._id === student._id)
+                )
+              );
+            }}
             renderInput={(params) => (
               <TextField {...params} label="Select Students" placeholder="Search students..." />
             )}
@@ -372,7 +561,7 @@ const ClassesManagement = () => {
           <Button
             onClick={handleAddStudents}
             variant="contained"
-            disabled={selectedStudents.length === 0}
+            disabled={selectedStudents.length === 0 || currentUser?.userRole !== 'ADMIN'}
             sx={{ backgroundColor: '#dd2825', color: 'white' }}
           >
             Add Students

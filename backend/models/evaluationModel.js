@@ -1,19 +1,37 @@
-// models/evaluationModel.js
+// evaluation.model.js
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
 
-const evaluationSchema = new Schema(
-  {
-    date:    { type: Date, default: Date.now },
-    comment: { type: String },
-    note:    { type: Number, default: 0 },
-    userRef: {
-      type: Schema.Types.ObjectId,
+const evaluationSchema = new mongoose.Schema({
+  team: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Team',
+    required: true
+  },
+  evaluator: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  evaluations: [{
+    member: {
+      type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true
-    }
-  },
-  { timestamps: true }
-);
+    },
+    clarity: { type: Number, min: 1, max: 5 },
+    commitFrequency: { type: Number, min: 1, max: 5 },
+    deadlineRespect: { type: Number, min: 1, max: 5 },
+    efficiency: { type: Number, min: 1, max: 5 },
+    codePerformance: { type: Number, min: 1, max: 5 },
+    plagiarismDetection: { type: Number, min: 0, max: 1 },
+    collaboration: { type: Number, min: 1, max: 5 },
+    testsValidation: { type: Number, min: 1, max: 5 },
+    reportQuality: { type: Number, min: 1, max: 5 },
+    note: { type: Number, min: 0, max: 20 }
+  }],
+  teamAverage: { type: Number, min: 0, max: 20 },
+  evaluatedAt: { type: Date, default: Date.now },
+
+});
 
 module.exports = mongoose.model('Evaluation', evaluationSchema);

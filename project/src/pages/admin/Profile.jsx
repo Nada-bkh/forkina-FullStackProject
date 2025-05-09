@@ -11,23 +11,38 @@ import {
   ListItemText,
   Button,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Chip,
+  useTheme,
+  IconButton
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { Person as PersonIcon } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { Edit, ArrowBack, Lock, LockOpen, Email, School, Badge, Person } from '@mui/icons-material';
 import EditProfileDialog from '../../components/dialogs/EditProfileDialog';
-import { useNavigate, useOutletContext } from 'react-router-dom';
 
-const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
+const ProfileCard = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(4),
   borderRadius: '16px',
-  background: 'rgba(255, 255, 255, 0.9)',
-  backdropFilter: 'blur(10px)',
-  boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+  background: theme.palette.background.paper,
+  boxShadow: theme.shadows[3],
+  transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+  '&:hover': {
+    transform: 'translateY(-5px)',
+    boxShadow: theme.shadows[6],
+  },
+}));
+
+const DetailCard = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(4),
+  borderRadius: '16px',
+  background: theme.palette.background.paper,
+  boxShadow: theme.shadows[3],
 }));
 
 const Profile = () => {
-  const { user, updateUser } = useOutletContext();
+  const theme = useTheme();
+  const [user, setUser] = useState(null);
   const [error, setError] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -36,7 +51,6 @@ const Profile = () => {
   const checkToken = () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      console.log('No token found, redirecting to signin');
       navigate('/signin');
       return null;
     }
@@ -48,8 +62,6 @@ const Profile = () => {
       const token = checkToken();
       if (!token) return;
 
-      console.log('Fetching profile with token:', token);
-
       const response = await fetch('http://localhost:5001/api/users/profile', {
         method: 'GET',
         headers: {
@@ -59,21 +71,17 @@ const Profile = () => {
       });
 
       if (!response.ok) {
-        const data = await response.json();
         if (response.status === 401) {
-          console.log('Token invalid, clearing and redirecting');
           localStorage.removeItem('token');
           navigate('/signin');
           return;
         }
-        throw new Error(data.message || 'Failed to fetch profile');
+        throw new Error('Failed to fetch profile');
       }
 
       const data = await response.json();
-      console.log('Profile data received:', data);
-      updateUser(data);
+      setUser(data);
     } catch (err) {
-      console.error('Profile fetch error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -87,166 +95,252 @@ const Profile = () => {
     }
   }, []);
 
-  const handleEditClick = () => {
-    setIsEditDialogOpen(true);
-  };
-
-  const handleEditClose = () => {
-    setIsEditDialogOpen(false);
-  };
-
-  const handleProfileUpdate = (updatedUser) => {
-    updateUser(updatedUser);
-  };
+  const handleEditClick = () => setIsEditDialogOpen(true);
+  const handleEditClose = () => setIsEditDialogOpen(false);
+  const handleProfileUpdate = (updatedUser) => setUser(updatedUser);
 
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
+        <CircularProgress color="error" />
       </Box>
     );
   }
 
   if (error) {
-    return <Alert severity="error">{error}</Alert>;
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+        <Button 
+          variant="contained" 
+          color="error"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </Button>
+      </Box>
+    );
   }
 
   if (!user) {
-    return <Alert severity="info">Loading profile...</Alert>;
+    return <Alert severity="info">No profile data available.</Alert>;
   }
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" sx={{ mb: 3 }}>Profile</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+        <IconButton onClick={() => navigate(-1)} sx={{ mr: 2 }}>
+          <ArrowBack />
+        </IconButton>
+        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.error.main }}>
+          My Profile
+        </Typography>
+      </Box>
       
       <Grid container spacing={3}>
-        {/* Left column - Profile Info */}
+        {/* Profile Card */}
         <Grid item xs={12} md={4}>
-          <StyledPaper>
+          <ProfileCard>
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
               {user.profilePicture || user.faceImage ? (
                 <Avatar 
                   src={`http://localhost:5001${user.profilePicture || user.faceImage}`}
-                  sx={{ width: 120, height: 120, mb: 2 }}
+                  sx={{ 
+                    width: 150, 
+                    height: 150, 
+                    mb: 3,
+                    border: `4px solid ${theme.palette.error.light}`
+                  }}
                 />
               ) : (
                 <Avatar 
                   sx={{ 
-                    width: 120, 
-                    height: 120, 
-                    mb: 2, 
-                    bgcolor: '#dd2825' 
+                    width: 150, 
+                    height: 150, 
+                    mb: 3,
+                    bgcolor: theme.palette.error.main,
+                    fontSize: '3rem',
+                    border: `4px solid ${theme.palette.error.light}`
                   }}
                 >
                   {user.firstName?.charAt(0)}
                 </Avatar>
               )}
-              <Typography variant="h6">{`${user.firstName} ${user.lastName}`}</Typography>
-              <Typography color="textSecondary">{user.userRole}</Typography>
+              
+              <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1 }}>
+                {`${user.firstName} ${user.lastName}`}
+              </Typography>
+              
+              <Chip 
+                label={user.userRole} 
+                color="error" 
+                variant="outlined"
+                sx={{ mb: 2 }}
+              />
+              
+              <Chip 
+                icon={user.accountStatus ? <LockOpen /> : <Lock />}
+                label={user.accountStatus ? 'Active' : 'Inactive'} 
+                color={user.accountStatus ? 'success' : 'error'}
+                variant="outlined"
+                sx={{ mb: 3 }}
+              />
             </Box>
             
             <Button 
               fullWidth 
               variant="contained" 
+              startIcon={<Edit />}
               onClick={handleEditClick}
               sx={{ 
-                bgcolor: '#dd2825',
-                '&:hover': { bgcolor: 'rgba(221, 40, 37, 0.9)' },
-                color: 'white'
+                background: `linear-gradient(45deg, ${theme.palette.error.dark} 0%, ${theme.palette.error.light} 100%)`,
+                color: 'white',
+                py: 1.5,
+                borderRadius: '8px',
+                '&:hover': {
+                  background: `linear-gradient(45deg, ${theme.palette.error.dark} 30%, ${theme.palette.error.light} 90%)`,
+                }
               }}
             >
               Edit Profile
             </Button>
-          </StyledPaper>
+          </ProfileCard>
         </Grid>
 
-        {/* Right column - Detailed Info */}
+        {/* Details Card */}
         <Grid item xs={12} md={8}>
-          <StyledPaper>
-            <Typography variant="h6" sx={{ mb: 2 }}>Profile Details</Typography>
-            <Divider sx={{ mb: 2 }} />
+          <DetailCard>
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              mb: 3,
+              pb: 2,
+              borderBottom: `1px solid ${theme.palette.divider}`
+            }}>
+              <Typography variant="h5" sx={{ fontWeight: 'bold', color: theme.palette.error.main }}>
+                Personal Information
+              </Typography>
+            </Box>
             
-            <List>
-              <ListItem>
-                <ListItemText 
-                  primary="First Name" 
-                  secondary={user.firstName} 
-                  primaryTypographyProps={{ color: 'textSecondary' }}
-                />
-              </ListItem>
-              <Divider />
-
-              <ListItem>
-                <ListItemText 
-                  primary="Last Name" 
-                  secondary={user.lastName} 
-                  primaryTypographyProps={{ color: 'textSecondary' }}
-                />
-              </ListItem>
-              <Divider />
-
-              <ListItem>
-                <ListItemText 
-                  primary="Email" 
-                  secondary={user.email} 
-                  primaryTypographyProps={{ color: 'textSecondary' }}
-                />
-              </ListItem>
-              <Divider />
-
-              {user.userRole === 'STUDENT' && (
-                <>
-                  <ListItem>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <List dense>
+                  <ListItem sx={{ px: 0 }}>
                     <ListItemText 
-                      primary="CIN" 
-                      secondary={user.cin || 'Non renseigné'} 
-                      primaryTypographyProps={{ color: 'textSecondary' }}
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                          <Person color="action" sx={{ mr: 1 }} />
+                          <Typography variant="subtitle2">First Name</Typography>
+                        </Box>
+                      } 
+                      secondary={
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {user.firstName}
+                        </Typography>
+                      } 
                     />
                   </ListItem>
-                  <Divider />
                   
-                  <ListItem>
-                    <ListItemText 
-                      primary="Classe" 
-                      secondary={user.classe || '--'} 
-                      primaryTypographyProps={{ color: 'textSecondary' }}
-                    />
-                  </ListItem>
-                  <Divider />
-                </>
-              )}
+                  <Divider sx={{ my: 1 }} />
 
-              <ListItem>
-                <ListItemText 
-                  primary="Role" 
-                  secondary={user.userRole} 
-                  primaryTypographyProps={{ color: 'textSecondary' }}
-                />
-              </ListItem>
-              <Divider />
-              
-              {user.userRole === 'STUDENT' && (
-                <>
-                  <ListItem>
+                  <ListItem sx={{ px: 0 }}>
                     <ListItemText 
-                      primary="Education Level" 
-                      secondary={user.educationLevel || 'Beginner'} 
-                      primaryTypographyProps={{ color: 'textSecondary' }}
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                          <Person color="action" sx={{ mr: 1 }} />
+                          <Typography variant="subtitle2">Last Name</Typography>
+                        </Box>
+                      } 
+                      secondary={
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {user.lastName}
+                        </Typography>
+                      } 
                     />
                   </ListItem>
-                  <Divider />
-                </>
-              )}
-              
-              <ListItem>
-                <ListItemText 
-                  primary="Account Status" 
-                  secondary={user.accountStatus ? 'Active' : 'Inactive'} 
-                  primaryTypographyProps={{ color: 'textSecondary' }}
-                />
-              </ListItem>
-            </List>
-          </StyledPaper>
+                  
+                  <Divider sx={{ my: 1 }} />
+
+                  <ListItem sx={{ px: 0 }}>
+                    <ListItemText 
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                          <Email color="action" sx={{ mr: 1 }} />
+                          <Typography variant="subtitle2">Email</Typography>
+                        </Box>
+                      } 
+                      secondary={
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {user.email}
+                        </Typography>
+                      } 
+                    />
+                  </ListItem>
+                </List>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+  <List dense>
+    {user.userRole === 'STUDENT' && (
+      <>
+        <ListItem sx={{ px: 0 }}>
+          <ListItemText 
+            primary={
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                <Badge color="action" sx={{ mr: 1 }} />
+                <Typography variant="subtitle2">CIN</Typography>
+              </Box>
+            } 
+            secondary={
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {user.cin || 'Not provided'}
+              </Typography>
+            } 
+          />
+        </ListItem>
+        
+        <Divider sx={{ my: 1 }} />
+
+        <ListItem sx={{ px: 0 }}>
+          <ListItemText 
+            primary={
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                <School color="action" sx={{ mr: 1 }} />
+                <Typography variant="subtitle2">Class</Typography>
+              </Box>
+            } 
+            secondary={
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {user.classe || 'Not assigned'}
+              </Typography>
+            } 
+          />
+        </ListItem>
+        
+        <Divider sx={{ my: 1 }} />
+
+        <ListItem sx={{ px: 0 }}>
+          <ListItemText 
+            primary={
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                <School color="action" sx={{ mr: 1 }} />
+                <Typography variant="subtitle2">Education Level</Typography>
+              </Box>
+            } 
+            secondary={
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {user.educationLevel || 'Beginner'}
+              </Typography>
+            } 
+          />
+        </ListItem>
+      </>
+    )}
+  </List>
+</Grid>
+            </Grid>
+          </DetailCard>
         </Grid>
       </Grid>
 
@@ -260,4 +354,4 @@ const Profile = () => {
   );
 };
 
-export default Profile; 
+export default Profile;

@@ -21,23 +21,27 @@ import AuthTransfer from "./pages/AuthTransfer";
 import VerifyEmail from "./pages/VerifyEmail";
 import ProjectsList from "./pages/tutor/ProjectsList";
 import ProjectCreate from "./pages/tutor/ProjectCreate";
-import ProjectDetails from "./pages/tutor/ProjectDetails";
+import ProjectDetails from "./components/ProjectDetails"; // Updated import
 import ProjectEdit from "./pages/tutor/ProjectEdit";
 import TasksList from "./pages/tutor/TasksList";
 import TaskCreate from "./pages/tutor/TaskCreate";
 import TaskDetails from "./pages/tutor/TaskDetails";
 import TaskEdit from "./pages/tutor/TaskEdit";
-import StudentProjectsList from "./pages/student/ProjectsList";
-import StudentProjectDetails from "./pages/student/ProjectDetails";
-import StudentTasksList from "./pages/student/TasksList";
-import StudentTaskDetails from "./pages/student/TaskDetails";
 import StudentsList from './pages/tutor/StudentsList';
 import ClassesList from './pages/tutor/ClassesList';
 import ClassDetails from './pages/tutor/components/ClassDetails';
 import ClassesManagement from './pages/admin/ClassesManagement';
 import TeamsList from "./pages/tutor/TeamsList.jsx";
-import ProjectsManagement from "./pages/admin/ProjectsManagement"; // New import
-import TasksManagement from "./pages/admin/TasksManagement";     // New import
+import ProjectsManagement from "./pages/admin/ProjectsManagement";
+import TasksManagement from "./pages/admin/TasksManagement";
+import TeamsManagement from "./pages/admin/TeamsManagement";
+import StudentProjects from "./pages/student/StudentProjects";
+import ProjectApply from "./pages/student/ProjectApply";
+import AiAssignmentPanel from "./pages/tutor/components/AiAssignmentPanel.jsx";
+import EvaluationGrid from "./pages/tutor/EvaluationGrid.jsx";
+import EvaluationDetail from "./pages/tutor/TeamEvaluationView.jsx";
+import QuizGenerator from "./pages/tutor/QuizGenerator.jsx";
+import EditEvaluation from "./pages/tutor/EditEvaluation.jsx"
 
 const theme = createTheme({
   palette: {
@@ -78,7 +82,15 @@ const theme = createTheme({
   },
 });
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 10 * 1000,
+      refetchOnWindowFocus: true,
+      retry: 1
+    },
+  },
+});
 
 const App = () => (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
@@ -95,35 +107,37 @@ const App = () => (
               <Route path="/auth-transfer" element={<AuthTransfer />} />
               <Route path="/verify-email/:token" element={<VerifyEmail />} />
 
-              {/* Admin Dashboard Routes */}
               <Route path="/admin" element={<DashboardLayout />}>
                 <Route index element={<Navigate to="/admin/users" replace />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="users" element={<UsersList />} />
                 <Route path="users/students" element={<UsersList />} />
                 <Route path="users/tutors" element={<UsersList />} />
+                <Route path="users/admins" element={<UsersList />} />
                 <Route path="submit-task" element={<SubmitTask />} />
                 <Route path="classes" element={<ClassesManagement />} />
-                <Route path="projects" element={<ProjectsManagement />} /> {/* New admin route */}
-                <Route path="projects/:projectId" element={<ProjectDetails role="ADMIN" />} /> {/* Admin project details */}
-                <Route path="projects/:projectId/edit" element={<ProjectEdit role="ADMIN" />} /> {/* Admin project edit */}
-                <Route path="projects/:projectId/tasks" element={<TasksList role="ADMIN" />} /> {/* Admin tasks list */}
-                <Route path="projects/:projectId/tasks/create" element={<TaskCreate role="ADMIN" />} /> {/* Admin task create */}
-                <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetails role="ADMIN" />} /> {/* Admin task details */}
-                <Route path="projects/:projectId/tasks/:taskId/edit" element={<TaskEdit role="ADMIN" />} /> {/* Admin task edit */}
-                <Route path="tasks" element={<TasksManagement />} /> {/* New admin route */}
+                <Route path="projects" element={<ProjectsManagement />} />
+                <Route path="projects/:projectId" element={<ProjectDetails role="ADMIN" />} />
+                <Route path="projects/:projectId/edit" element={<ProjectEdit role="ADMIN" />} />
+                <Route path="projects/:projectId/tasks" element={<TasksList role="ADMIN" />} />
+                <Route path="projects/:projectId/tasks/create" element={<TaskCreate role="ADMIN" />} />
+                <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetails role="ADMIN" />} />
+                <Route path="projects/:projectId/tasks/:taskId/edit" element={<TaskEdit role="ADMIN" />} />
+                <Route path="tasks" element={<TasksManagement />} />
+                <Route path="teams" element={<TeamsManagement />} />
               </Route>
 
               {/* Student Dashboard Routes */}
               <Route path="/student" element={<StudentDashboardLayout />}>
                 <Route index element={<StudentDashboard />} />
                 <Route path="profile" element={<Profile />} />
-                <Route path="projects" element={<StudentProjectsList />} />
-                <Route path="projects/:projectId" element={<StudentProjectDetails />} />
-                <Route path="projects/:projectId/tasks" element={<StudentTasksList />} />
-                <Route path="projects/:projectId/tasks/:taskId" element={<StudentTaskDetails />} />
-                <Route path="tasks" element={<StudentTasksList />} />
-                <Route path="tasks/:taskId" element={<StudentTaskDetails />} />
+                <Route path="projects" element={<StudentProjects />} />
+                <Route path="projects/apply" element={<ProjectApply />} />
+                <Route path="projects/:projectId" element={<ProjectDetails role="STUDENT" />} />
+                <Route path="projects/:projectId/tasks" element={<TasksList role="STUDENT" />} />
+                <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetails role="STUDENT" />} />
+                <Route path="tasks" element={<TasksList role="STUDENT" />} />
+                <Route path="tasks/:taskId" element={<TaskDetails role="STUDENT" />} />
                 <Route path="team" element={<TeamManagement />} />
               </Route>
 
@@ -132,20 +146,24 @@ const App = () => (
                 <Route index element={<TutorDashboard />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="students" element={<StudentsList />} />
-                <Route path="evaluations" element={<div>Evaluations Page</div>} />
                 <Route path="projects" element={<ProjectsList />} />
+                <Route path="projects/:projectId" element={<ProjectDetails role="TUTOR" />} />
+                <Route path="projects/:projectId/edit" element={<ProjectEdit role="TUTOR" />} />
                 <Route path="projects/create" element={<ProjectCreate />} />
-                <Route path="projects/:projectId" element={<ProjectDetails />} />
-                <Route path="projects/:projectId/edit" element={<ProjectEdit />} />
-                <Route path="projects/:projectId/tasks" element={<TasksList />} />
-                <Route path="projects/:projectId/tasks/create" element={<TaskCreate />} />
-                <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetails />} />
-                <Route path="projects/:projectId/tasks/:taskId/edit" element={<TaskEdit />} />
+                <Route path="teams/:teamId/evaluate" element={<EvaluationGrid />} />
+                
+                <Route path="evaluationdetails/:teamId" element={<EvaluationDetail role="TUTOR" />} />
+                <Route path="teams/:teamId/edit-evaluation" element={<EditEvaluation />} />
+
+                <Route path="projects/:projectId/tasks" element={<TasksList role="TUTOR" />} />
+                <Route path="projects/:projectId/tasks/create" element={<TaskCreate role="TUTOR" />} />
+                <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetails role="TUTOR" />} />
+                <Route path="projects/:projectId/tasks/:taskId/edit" element={<TaskEdit role="TUTOR" />} />
                 <Route path="classes" element={<ClassesList />} />
                 <Route path="classes/:classId" element={<ClassDetails />} />
-                <Route path="teams" element={<TeamsList />} />
-                <Route path="assignments" element={<div>Assignments Page</div>} />
-                <Route path="groups" element={<div>Groups Page</div>} />
+                <Route path="teams" element={<AiAssignmentPanel />} />
+                <Route path="teams/eval" element={<TeamsList />} />
+                <Route path="quiz-generator" element={<QuizGenerator />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

@@ -1,4 +1,3 @@
-// src/pages/tutor/ClassDetails.jsx
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -19,17 +18,41 @@ import {
   Chip,
   Avatar,
   Tooltip,
-  IconButton
+  IconButton,
+  TextField,
+  InputAdornment,
+  useTheme,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, Visibility as VisibilityIcon, Search } from '@mui/icons-material';
+import { styled } from '@mui/material/styles';
 import { fetchClassById } from '../../../api/classApi';
 
+// Custom styled components
+const RedGradientButton = styled(Button)(({ theme }) => ({
+  background: `linear-gradient(45deg, ${theme.palette.error.dark} 0%, ${theme.palette.error.light} 100%)`,
+  color: theme.palette.common.white,
+  '&:hover': {
+    background: `linear-gradient(45deg, ${theme.palette.error.dark} 30%, ${theme.palette.error.light} 90%)`,
+  },
+}));
+
+const StyledTableRow = styled(TableRow)(({ theme }) => ({
+  '&:nth-of-type(odd)': {
+    backgroundColor: theme.palette.action.hover,
+  },
+  '&:hover': {
+    backgroundColor: theme.palette.action.selected,
+  },
+}));
+
 const ClassDetails = () => {
+  const theme = useTheme();
   const { classId } = useParams();
   const navigate = useNavigate();
   const [classDetails, setClassDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchClassDetails();
@@ -54,7 +77,11 @@ const ClassDetails = () => {
   };
 
   const handleViewStudent = (studentId) => {
-    navigate(`/tutor/students/${studentId}`); // You may need to create a student details page if required
+    navigate(`/tutor/students/${studentId}`);
+  };
+
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value);
   };
 
   const getProfileImageUrl = (user) => {
@@ -70,9 +97,18 @@ const ClassDetails = () => {
     return null;
   };
 
+  const filteredStudents = classDetails?.students?.filter((student) => {
+    const query = searchQuery.toLowerCase().trim();
+    return (
+      (student.firstName || '').toLowerCase().includes(query) ||
+      (student.lastName || '').toLowerCase().includes(query) ||
+      (student.email || '').toLowerCase().includes(query)
+    );
+  }) || [];
+
   if (loading) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ p: 3, backgroundColor: theme.palette.background.default }}>
         <LinearProgress />
         <Typography sx={{ mt: 2, textAlign: 'center' }}>Loading class details...</Typography>
       </Box>
@@ -81,32 +117,71 @@ const ClassDetails = () => {
 
   if (error) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ p: 3, backgroundColor: theme.palette.background.default }}>
         <Alert severity="error">{error}</Alert>
-        <Button sx={{ mt: 2 }} onClick={handleBack}>
+        <RedGradientButton onClick={handleBack} sx={{ mt: 2 }} aria-label="Back to classes">
           Back to Classes
-        </Button>
+        </RedGradientButton>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={handleBack}
-          sx={{ mr: 2 }}
-        >
-          Back
-        </Button>
-        <Typography variant="h5" sx={{ color: '#dd2825' }}>
-          Class Details
-        </Typography>
+    <Box sx={{ p: 3, backgroundColor: theme.palette.background.default }}>
+      {/* Header Section */}
+      <Box
+        sx={{
+          mb: 4,
+          p: 3,
+          borderRadius: 2,
+          background: `linear-gradient(45deg, ${theme.palette.error.dark} 0%, ${theme.palette.error.light} 100%)`,
+          boxShadow: 3,
+          color: 'white',
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <IconButton onClick={handleBack} sx={{ color: 'white', mr: 2 }} aria-label="Back to classes">
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="h4" sx={{ fontWeight: 700 }}>
+              Class Details: {classDetails?.name || 'Unknown'}
+            </Typography>
+          </Box>
+        </Box>
+        <TextField
+          variant="outlined"
+          value={searchQuery}
+          onChange={handleSearchChange}
+          placeholder="Search students..."
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search color="action" />
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            width: '100%',
+            maxWidth: 400,
+            backgroundColor: 'white',
+            borderRadius: 1,
+            '& .MuiInputBase-root': {
+              height: 35,
+            },
+            '& .MuiInputBase-input': {
+              padding: '0 14px',
+              display: 'flex',
+              alignItems: 'center',
+              height: '100%',
+            },
+          }}
+        />
       </Box>
 
+      {/* Main Content */}
       {classDetails && (
-        <Paper sx={{ p: 4 }}>
+        <Paper sx={{ p: 4, boxShadow: 3 }}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <Typography variant="h4">{classDetails.name}</Typography>
@@ -141,29 +216,38 @@ const ClassDetails = () => {
             <Grid item xs={12}>
               <Divider sx={{ my: 2 }} />
               <Typography variant="h6">Students</Typography>
-              {classDetails.students.length === 0 ? (
-                <Typography sx={{ mt: 2 }}>No students assigned to this class.</Typography>
+              {filteredStudents.length === 0 ? (
+                <Typography sx={{ mt: 2 }}>
+                  {searchQuery ? `No students found matching "${searchQuery}"` : 'No students assigned to this class.'}
+                </Typography>
               ) : (
-                <TableContainer component={Paper} sx={{ mt: 2 }}>
+                <TableContainer component={Paper} sx={{ mt: 2, boxShadow: 3 }}>
                   <Table>
-                    <TableHead>
-                      <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                        <TableCell>Student</TableCell>
-                        <TableCell>Email</TableCell>
-                        <TableCell>CIN</TableCell>
-                        <TableCell>Education Level</TableCell>
-                        <TableCell align="right">Actions</TableCell>
+                    <TableHead sx={{ bgcolor: theme.palette.error.light }}>
+                      <TableRow>
+                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Student</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Email</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>CIN</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Education Level</TableCell>
+                        <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold' }}>Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {classDetails.students.map((student) => (
-                        <TableRow key={student._id} hover>
+                      {filteredStudents.map((student) => (
+                        <StyledTableRow key={student._id}>
                           <TableCell>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <Avatar 
+                              <Avatar
                                 src={getProfileImageUrl(student)}
                                 alt={`${student.firstName} ${student.lastName}`}
-                                sx={{ mr: 2, width: 40, height: 40 }}
+                                sx={{
+                                  mr: 2,
+                                  width: 40,
+                                  height: 40,
+                                  bgcolor: theme.palette.error.main,
+                                  background: `linear-gradient(45deg, ${theme.palette.error.dark} 0%, ${theme.palette.error.light} 100%)`,
+                                  color: 'white',
+                                }}
                               >
                                 {student.firstName?.charAt(0)}{student.lastName?.charAt(0)}
                               </Avatar>
@@ -173,8 +257,8 @@ const ClassDetails = () => {
                           <TableCell>{student.email}</TableCell>
                           <TableCell>{student.cin || 'Not provided'}</TableCell>
                           <TableCell>
-                            <Chip 
-                              label={student.educationLevel || 'BEGINNER'} 
+                            <Chip
+                              label={student.educationLevel || 'BEGINNER'}
                               size="small"
                               color={
                                 student.educationLevel === 'ADVANCED' ? 'success' :
@@ -187,12 +271,13 @@ const ClassDetails = () => {
                               <IconButton
                                 onClick={() => handleViewStudent(student._id)}
                                 size="small"
+                                aria-label={`View details for ${student.firstName} ${student.lastName}`}
                               >
                                 <VisibilityIcon />
                               </IconButton>
                             </Tooltip>
                           </TableCell>
-                        </TableRow>
+                        </StyledTableRow>
                       ))}
                     </TableBody>
                   </Table>

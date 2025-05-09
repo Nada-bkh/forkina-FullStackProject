@@ -1,28 +1,62 @@
 // controllers/evaluationController.js
 const Evaluation = require('../models/evaluationModel');
+const Team = require('../models/teamModel');
 
+// controllers/evaluationController.js
+// Dans votre contrôleur d'évaluation
 exports.createEvaluation = async (req, res) => {
   try {
-    const evaluation = new Evaluation(req.body);
+    const { teamId } = req.params; // Récupéré de l'URL maintenant
+    const { evaluator, evaluations, teamAverage } = req.body;
+    
+    // Validation de base
+    if (!evaluator || !evaluations || !teamAverage) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Missing required fields" 
+      });
+    }
+
+    const evaluation = new Evaluation({
+      team: teamId,
+      evaluator,
+      evaluations,
+      teamAverage
+    });
+
     await evaluation.save();
-    return res.status(201).json(evaluation);
-  } catch (err) {
-    return res.status(400).json({ error: err.message });
+    await Team.findByIdAndUpdate(teamId, { evaluation: evaluation._id });
+    res.status(201).json({ success: true, data: evaluation });
+  } catch (error) {
+    res.status(400).json({ 
+      success: false, 
+      error: error.message, 
+      details: error.errors // Ajout des détails de validation Mongoose si disponibles
+    });
   }
 };
-
-exports.getAllEvaluations = async (req, res) => {
+exports.getEvaluationByTeamId = async (req, res) => {
   try {
-    const evaluations = await Evaluation.find().populate('userRef');
-    return res.json(evaluations);
+    const evaluation = await Evaluation.findOne({ team: req.params.teamId })
+      .populate('evaluations.member')
+      .populate('evaluator');
+    if (!evaluation) {
+      return res.json({ success: true, data: null });
+    }
+    res.json({ success: true, data: evaluation });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 };
-
+// controllers/evaluationController.js
 exports.getEvaluationById = async (req, res) => {
   try {
-    const evaluation = await Evaluation.findById(req.params.id).populate('userRef');
+    const evaluation = await Evaluation.findById(req.params.id)
+      .populate('team')
+      .populate('evaluator')
+      .populate('evaluations.member')
+      .populate('tasks'); // Peuple les tâches
+    
     if (!evaluation) {
       return res.status(404).json({ error: 'Evaluation not found' });
     }

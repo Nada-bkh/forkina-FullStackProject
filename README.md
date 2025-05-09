@@ -1,44 +1,91 @@
-# Forkina 🍴  
-**Academic Project Management Platform**  
-*AI-powered collaboration with a Tunisian touch*  
+# Forkina – Academic Project Management Platform
+
+## Overview
+**Forkina** is a full-stack service-oriented web application designed to streamline academic project management within educational institutions. Built for students, tutors, and admins, it enables efficient team formation, project tracking, tutor assignment, deliverable submissions, and AI-enhanced decision support.
+
+## Features
+- 🧑‍🎓 Role-based user management (Student, Tutor, Admin)
+- 📁 Project proposal submission and GitHub integration
+- 📌 Team and tutor assignment with academic resume profiling
+- 📊 AI-powered team formation and project success prediction
+- 🔍 Plagiarism detection integration (future enhancement)
+- 🚀 Continuous Integration using GitHub Actions
+- ☁️ Deployment on Microsoft Azure
+
+## Tech Stack
+
+### Frontend
+- **React** with **Vite**
+- **Tailwind CSS** for modern UI
+
+### Backend
+- **Node.js** with **Express.js**
+- **MongoDB** as the primary database
+
+### DevOps & Tools
+- **Git** for version control
+- **GitHub Actions** for CI workflows
+- **Microsoft Azure** for cloud deployment
+- **Postman/Swagger** for API testing
+
+## Directory Structure
+```
+forkina/
+├── project/               # React + Vite frontend
+├── github-actions-secret-manager #Github app
+│   └── app.js/
+│   └── index.js
+├── backend/               # Node.js services (User, Projects, etc.)
+│   ├── ai-service/              
+│   └── config/ 
+│   └── controllers/
+│   └── middlewares/
+│   └── models/
+│   └── routes/
+│   └── services/
+│   └── uploads/
+│   └── utils/      
+└── .github/workflows/     # GitHub Actions CI pipeline
+```
+
+## Getting Started
+
+### Prerequisites
+- Node.js
+- MongoDB
+- Git
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Nada-bkh/forkina-FullStackProject.git
+   ```
+
+2. Install and run backend services:
+   ```bash
+   cd backend
+   npm install
+   npm run dev
+   ```
+
+   Repeat for other services.
+
+3. Start the frontend:
+   ```bash
+   cd project
+   npm install
+   npm run dev
+   ```
+
+4. Access the app:
+    - Frontend: `http://localhost:5173`
+    - Backend: `http://localhost:5001`
+
+## Acknowledgments
+- Developed as part of an academic curriculum at **ESPRIT**
+- Special thanks to mentors and team members for their guidance and support
 
 ---
 
-## Project Description 📚  
-Forkina is a centralized platform for academic institutions to manage student projects. It streamlines team formation, progress tracking, and project evaluation while integrating AI tools to ensure fairness and authenticity.  
-
-**Key Goals**:  
-- Simplify project management for students, tutors, and admins.  
-- Use AI to prevent plagiarism and automate team creation.  
-- Celebrate Tunisian culture through collaborative workflows.  
-
----
-
-## Technologies Used 💻  
-### Frontend  
-- **React** (UI framework)  
-- **Material-UI** (design system)  
-- **Chart.js** (data visualization)  
-
-### Backend  
-- **Node.js** & **Express.js** (REST API)  
-- **MongoDB** (database)  
-- **JWT** (authentication)  
-
-### AI Features  
-- **GitHub API** (commit tracking)  
-- **Natural.js** (NLP for progress analysis)  
-- **TensorFlow.js** (predictive analytics)  
-
----
-
-## Development Approach 🛠️  
-1. **Modular Design**: Build reusable components for scalability.  
-2. **AI-First**: Prioritize ethical AI tools (team matching, plagiarism checks).  
-3. **Cultural Integration**: Use Tunisian-inspired UI/UX elements.  
-4. **Agile Workflow**: Develop in sprints with iterative testing.  
-
----
-
-**Inspired by Tunisian web developers, Built for Global Academia.**  
-**ESPRIT Project**
+> **Keywords**: academic project management, React, Node.js, MongoDB, GitHub Actions, Azure deployment, project tracking, student collaboration, tutor assignment, CI/CD, Vite, Tailwind CSS

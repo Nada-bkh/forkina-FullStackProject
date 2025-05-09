@@ -1,31 +1,31 @@
-const router = require('express').Router();
 const axios = require('axios');
+const express = require('express');
+const authMiddleware = require("../middlewares/authMiddleware");
 
-router.get('/sonarqube/:projectKey', async (req, res) => {
+const router = express.Router();
+router.use(authMiddleware);
+
+router.get('/sonarqube/projects', async (req, res) => {
     try {
-        const response = await axios.get(
-            `${process.env.SONARQUBE_URL}/api/measures/component`,
-            {
-                params: {
-                    component: req.params.projectKey,
-                    metricKeys: [
-                        'bugs', 'vulnerabilities', 'code_smells',
-                        'coverage', 'duplicated_lines_density',
-                        'security_rating', 'reliability_rating',
-                        'sqale_rating', 'alert_status'
-                    ].join(',')
-                },
-                auth: {
-                    username: process.env.SONARQUBE_TOKEN,
-                    password: ''
-                }
-            }
-        );
-        res.json(response.data.component.measures);
+        const response = await axios.get(`${process.env.SONARQUBE_URL}/api/projects/search`, {
+            auth: {
+                username: process.env.SONARQUBE_USERNAME,
+                password: process.env.SONARQUBE_PASSWORD,
+            },
+        });
+
+        if (!response.data || !response.data.components) {
+            return res.status(404).json({ error: 'No projects found' });
+        }
+
+        res.json(response.data.components);
     } catch (error) {
+        console.error('SonarQube projects fetch error:', error?.response?.data || error.message);
         res.status(500).json({
-            error: 'Failed to fetch SonarQube metrics',
-            details: error.message
+            error: 'Failed to fetch SonarQube projects',
+            details: error?.response?.data || error.message,
         });
     }
 });
+
+module.exports = router;

@@ -25,7 +25,7 @@ const classRoutes = require('./routes/classRoutes'); // Add this line
 const projectRequestRoutes = require('./routes/projectRequestRoutes');
 const projectApplicationRoutes = require('./routes/projectApplicationRoutes');
 const assignmentRoutes = require('./routes/assignments.js');
-
+const sonarqubeRoutes = require('./routes/analytics.js');
 const app = express();
 
 // Connect to MongoDB
@@ -50,7 +50,7 @@ app.use(passport.session());
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: ['http://localhost:5173', 'https://forkina-dhgmeqf4fcemdmfv.westeurope-01.azurewebsites.net'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -81,6 +81,7 @@ app.use('/api/classes', classRoutes); // Add this line
 app.use('/api/project-requests', projectRequestRoutes);
 app.use('/api/project-applications', projectApplicationRoutes);
 app.use('/api/assignments', assignmentRoutes);
+app.use('/api', sonarqubeRoutes);
 // Handle React routing, return all requests to React app
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
@@ -94,7 +95,7 @@ app.use((err, req, res, next) => {
 
 // Server startup with port handling
 const startServer = async () => {
-  const PORT = 5001;
+  const PORT = process.env.PORT || 5001;
   try {
     const server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

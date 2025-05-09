@@ -4,6 +4,7 @@ import { isAuthenticated } from '../utils/authUtils';
 import FaceLogin from '../components/FaceLogin';
 import FaceIcon from '@mui/icons-material/Face';
 
+
 import {
   Box,
   Container,
@@ -69,9 +70,10 @@ const SignIn = () => {
         try {
           // Récupérer le token
           const token = localStorage.getItem('token');
+          const VITE_API_BASE_URL = process.env.REACT_APP_API_URL;
 
           // Appeler l'API pour vérifier le token et obtenir le rôle
-          const response = await fetch('http://localhost:5001/api/auth/me', {
+          const response = await fetch(`${VITE_API_BASE_URL}/api/auth/me`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }

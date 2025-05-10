@@ -9,8 +9,10 @@ const teamSchema = new Schema(
         evaluation: { type: mongoose.Schema.Types.ObjectId, ref: 'Evaluation' , default: null },
         score: { type: Number, default: 0 },
         projectRef: {
-            type: Schema.Types.ObjectId,
-            ref: 'Project'
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Project',
+            required: true,
+            default: 'Not Assigned'
         },
         classRef: { type: Schema.Types.ObjectId, ref: 'Class', required: true },
         members: [

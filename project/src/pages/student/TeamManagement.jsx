@@ -49,12 +49,12 @@ const TeamManagement = () => {
       const allStudents = classmatesData.filter(student => student.classe);
       setClassmates(allStudents);
 
-      // Filtrer les étudiants non affectés à un team
+      // Filter out students who are assigned to a team
       const assignedStudentIds = new Set(
-        teamsData.flatMap(team => team.members.map(member => member.user._id))
+          teamsData.flatMap(team => team.members.map(member => member.user._id))
       );
       const unassignedStudents = allStudents.filter(
-        student => !assignedStudentIds.has(student._id)
+          student => !assignedStudentIds.has(student._id)
       );
       setAvailableClassmates(unassignedStudents);
 
@@ -69,7 +69,7 @@ const TeamManagement = () => {
     fetchData();
   }, []);
 
-  // Vérifier si l'utilisateur connecté a déjà créé une équipe
+  // Check if the current user has already created a team
   const hasCreatedTeam = currentUser && teams.some(team => team.createdBy._id === currentUser._id);
 
   const handleOpenDialog = () => {
@@ -80,12 +80,12 @@ const TeamManagement = () => {
     setFormData({ name: '', memberIds: [] });
     setSelectedMembers([]);
 
-    // Réinitialiser availableClassmates avec les étudiants non affectés
+    // Reset available classmates to unassigned students
     const assignedStudentIds = new Set(
-      teams.flatMap(team => team.members.map(member => member.user._id))
+        teams.flatMap(team => team.members.map(member => member.user._id))
     );
     const unassignedStudents = classmates.filter(
-      student => !assignedStudentIds.has(student._id)
+        student => !assignedStudentIds.has(student._id)
     );
     setAvailableClassmates(unassignedStudents);
 
@@ -97,12 +97,12 @@ const TeamManagement = () => {
     setFormData({ name: '', memberIds: [] });
     setSelectedMembers([]);
 
-    // Restaurer la liste complète des étudiants non affectés
+    // Restore the full list of unassigned students
     const assignedStudentIds = new Set(
-      teams.flatMap(team => team.members.map(member => member.user._id))
+        teams.flatMap(team => team.members.map(member => member.user._id))
     );
     const unassignedStudents = classmates.filter(
-      student => !assignedStudentIds.has(student._id)
+        student => !assignedStudentIds.has(student._id)
     );
     setAvailableClassmates(unassignedStudents);
   };
@@ -130,106 +130,108 @@ const TeamManagement = () => {
   if (userError) return <Alert severity="error">{userError.message}</Alert>;
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h5" sx={{ color: '#dd2825' }}>
-          My Teams
-        </Typography>
-        <Button
-          variant="contained"
-          onClick={handleOpenDialog}
-          disabled={hasCreatedTeam}
-          sx={{ 
-            color: 'white', 
-            bgcolor: '#dd2825', 
-            '&:hover': { bgcolor: '#c42020' },
-            '&.Mui-disabled': { 
-              bgcolor: '#e57373', 
-              color: 'rgba(255, 255, 255, 0.7)' 
-            }
-          }}
-        >
-          Create Team
-        </Button>
-      </Box>
-
-      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
-
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Team Name</TableCell>
-              <TableCell>Members</TableCell>
-              <TableCell>Created By</TableCell>
-              <TableCell>Assigned Project</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {teams.map(team => (
-              <TableRow key={team._id}>
-                <TableCell>{team.name}</TableCell>
-                <TableCell>
-                  {team.members.map(m => `${m.user.firstName} ${m.user.lastName}`).join(', ')}
-                </TableCell>
-                <TableCell>{`${team.createdBy.firstName} ${team.createdBy.lastName}`}</TableCell>
-                <TableCell>{team.projectRef?.name || 'Not assigned'}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Create Team</DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
-            <TextField
-              fullWidth
-              label="Team Name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              sx={{ mb: 2 }}
-            />
-         <Autocomplete
-  multiple
-  options={availableClassmates.filter(classmate => !classmate.teamRef)} // Filtre initial
-  getOptionLabel={(option) => `${option.firstName} ${option.lastName} (${option.email})`}
-  value={selectedMembers}
-  onChange={(event, newValue) => {
-    setSelectedMembers(newValue);
-    // Mise à jour des disponibles en excluant les sélectionnés ET en vérifiant teamRef
-    setAvailableClassmates(
-      classmates.filter(
-        classmate => 
-          !classmate.teamRef && 
-          !newValue.some(selected => selected._id === classmate._id)
-      )
-    );
-  }}
-  renderInput={(params) => (
-    <TextField {...params} label="Select Members" placeholder="Search members..." />
-  )}
-  fullWidth
-  isOptionEqualToValue={(option, value) => option._id === value._id}
-/>  ²
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog}>Cancel</Button>
-            <Button
-              type="submit"
+      <Box sx={{ p: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+          <Typography variant="h5" sx={{ color: '#dd2825' }}>
+            My Teams
+          </Typography>
+          <Button
               variant="contained"
-              disabled={selectedMembers.length === 0 || !formData.name}
-              sx={{ bgcolor: '#dd2825', '&:hover': { bgcolor: '#c42020' } }}
-            >
-              Create
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
-    </Box>
+              onClick={handleOpenDialog}
+              disabled={hasCreatedTeam}
+              sx={{
+                color: 'white',
+                bgcolor: '#dd2825',
+                '&:hover': { bgcolor: '#c42020' },
+                '&.Mui-disabled': {
+                  bgcolor: '#e57373',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                },
+              }}
+          >
+            Create Team
+          </Button>
+        </Box>
+
+        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Team Name</TableCell>
+                <TableCell>Class</TableCell>
+                <TableCell>Members</TableCell>
+                <TableCell>Created By</TableCell>
+                <TableCell>Assigned Project</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {teams.map(team => (
+                  <TableRow key={team._id}>
+                    <TableCell>{team.name}</TableCell>
+                    <TableCell>{team.classRef.name}</TableCell>
+                    <TableCell>
+                      {team.members.map(m => `${m.user.firstName} ${m.user.lastName}`).join(', ')}
+                    </TableCell>
+                    <TableCell>{`${team.createdBy.firstName} ${team.createdBy.lastName}`}</TableCell>
+                    <TableCell>{team.projectRef}</TableCell>
+                  </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+          <DialogTitle>Create Team</DialogTitle>
+          <form onSubmit={handleSubmit}>
+            <DialogContent>
+              <TextField
+                  fullWidth
+                  label="Team Name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  sx={{ mb: 2 }}
+              />
+              <Autocomplete
+                  multiple
+                  options={availableClassmates.filter(classmate => !classmate.teamRef)} // Filter available classmates
+                  getOptionLabel={(option) => `${option.firstName} ${option.lastName} (${option.email})`}
+                  value={selectedMembers}
+                  onChange={(event, newValue) => {
+                    setSelectedMembers(newValue);
+                    // Update available classmates by excluding selected members and those already assigned
+                    setAvailableClassmates(
+                        classmates.filter(
+                            classmate =>
+                                !classmate.teamRef &&
+                                !newValue.some(selected => selected._id === classmate._id)
+                        )
+                    );
+                  }}
+                  renderInput={(params) => (
+                      <TextField {...params} label="Select Members" placeholder="Search members..." />
+                  )}
+                  fullWidth
+                  isOptionEqualToValue={(option, value) => option._id === value._id}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseDialog}>Cancel</Button>
+              <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={selectedMembers.length === 0 || !formData.name}
+                  sx={{ bgcolor: '#dd2825', '&:hover': { bgcolor: '#c42020' } }}
+              >
+                Create
+              </Button>
+            </DialogActions>
+          </form>
+        </Dialog>
+      </Box>
   );
 };
 

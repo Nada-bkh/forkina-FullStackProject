@@ -43,30 +43,30 @@ exports.createTeam = async (req, res) => {
 exports.getTeamsByTutorId = async (req, res) => {
   try {
     if (!req.params.idTutor) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
         message: 'Tutor ID is required'
       });
     }
 
     if (!mongoose.Types.ObjectId.isValid(req.params.idTutor)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
         message: 'Invalid tutor ID'
       });
     }
 
-    // Récupérer les équipes avec population de l'évaluation
+    // Fetch teams and populate projectRef along with other fields
     const teams = await Team.find({ tutor: req.params.idTutor })
-      .populate('projectRef', 'name description')
-      .populate('classRef', 'name')
-      .populate('members.user', 'firstName lastName email')
-      .populate('tutor', 'firstName lastName email')
-      .populate('evaluation') // Ajoutez cette ligne
-      .lean();
+        .populate('projectRef', 'name')  // Populate projectRef
+        .populate('classRef', 'name')
+        .populate('members.user', 'firstName lastName email')
+        .populate('tutor', 'firstName lastName email')
+        .populate('evaluation')
+        .lean();
 
     if (!teams?.length) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
         message: 'No teams found for this tutor'
       });
@@ -75,13 +75,13 @@ exports.getTeamsByTutorId = async (req, res) => {
     res.json({ success: true, data: teams });
   } catch (err) {
     console.error('Error fetching teams:', err.stack);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       message: 'Server error',
       error: err.message
     });
   }
-}
+};
 
 exports.getTeamEvaluationPage = async (req, res) => {
   try {
@@ -105,10 +105,12 @@ exports.getStudentTeams = async (req, res) => {
       return res.status(403).json({ message: 'Only students can view their teams' });
     }
 
+    // Fetch teams for the student and populate projectRef along with other fields
     const teams = await Team.find({ 'members.user': req.user.id })
         .populate('members.user', 'firstName lastName email')
         .populate('createdBy', 'firstName lastName email')
-        .populate('classRef', 'name');
+        .populate('classRef', 'name')
+        .populate('projectRef'); // Populate projectRef
 
     return res.json(teams);
   } catch (err) {
@@ -273,7 +275,8 @@ exports.getAllTeams = async (req, res) => {
         .populate('members.user', 'firstName lastName email')
         .populate('createdBy', 'firstName lastName email')
         .populate('classRef', 'name')
-        .populate('tutor', 'firstName lastName email'); // Added this line to populate tutor
+        .populate('tutor', 'firstName lastName email')
+        .populate('projectRef');
 
     console.log('Fetched teams:', teams.map(t => t._id));
     return res.json(teams);

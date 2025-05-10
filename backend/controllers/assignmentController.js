@@ -161,6 +161,9 @@ exports.submitFinalAssignment = async (req, res) => {
 
         console.log(`Processing ${studentIds.length} students in team "${teamName}"`);
 
+        team.projectRef = project._id;
+        await team.save();
+
         if (!project.teamRef.includes(team._id)) {
             project.teamRef.push(team._id);
             await project.save();
@@ -189,6 +192,16 @@ exports.submitFinalAssignment = async (req, res) => {
             studentRef: { $in: studentIds },
             projectRef: { $ne: project._id }
         });
+
+        if (req.app.get('io')) {
+            req.app.get('io').emit('project_assigned', {
+                teamName,
+                projectName,
+                teamId: team._id.toString(),
+                projectId: project._id.toString()
+            });
+            console.log('Socket event emitted: project_assigned');
+        }
 
         return res.status(200).json({
             message: 'Final assignment submitted successfully',
@@ -248,5 +261,29 @@ exports.getStudentProjects = async (req, res) => {
     } catch (error) {
         console.error('Error fetching student projects:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+// Controller function to assign project to team
+exports.assignProjectToTeam = async (req, res) => {
+    try {
+        const { teamId, projectId } = req.body;
+
+        // Find the team and assign the project
+        const team = await Team.findById(teamId);
+        const project = await Project.findById(projectId);
+
+        if (!team || !project) {
+            return res.status(400).json({ message: 'Invalid team or project ID' });
+        }
+
+        // Assign the project to the team
+        team.projectRef = projectId;
+        await team.save();
+
+        // Return the updated team
+        return res.status(200).json(team);
+    } catch (error) {
+        console.error('Error assigning project to team:', error);
+        return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };

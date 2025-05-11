@@ -46,7 +46,6 @@ const register = async (req, res) => {
       faceImage: faceImage || null, // Add face image if provided
       faceDescriptor: faceDescriptor || null, // Add face descriptor if provided
       cin: cin || null, // Add CIN if provided
-      classe: "--" // Par défaut, pas encore affecté
     });
     
     await user.save();
@@ -54,8 +53,30 @@ const register = async (req, res) => {
     const newToken = new Verifyemail({ token: generatedToken, email, expiresAt: Date.now() + 3600000 });
     await newToken.save();
     const transporter = nodemailer.createTransport({ service: 'hotmail', auth: { user: 'Firdaous.JEBRI@esprit.tn', pass: 'xwbcgpyxnwghflrk' }, tls: { rejectUnauthorized: false }});
-    await transporter.sendMail({ from: 'Firdaous.JEBRI@esprit.tn', to: email, subject: 'Email Verification', html: `<h1>Email Verification</h1><p>Please verify your email by clicking the link below:</p><a href="${BASE_URL}/verify-email/${generatedToken}">Verify Email</a>`});
-    res.status(201).json({ message: "User registered successfully. Verification email sent.", user });
+    await transporter.sendMail({
+      from: 'Firdaous.JEBRI@esprit.tn',
+      to: email,
+      subject: 'Email Verification',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #2c3e50;">Email Verification</h2>
+          <p>Hello,</p>
+          <p>Thank you for signing up on our platform.</p>
+          <p>To complete your registration and activate your account, please confirm your email address by clicking the button below:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${BASE_URL}/verify-email/${generatedToken}" style="background-color: #FF0000; color: white; padding: 14px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Verify My Email
+            </a>
+          </div>
+          <p>If the button above doesn't work, you can also copy and paste the following link into your browser:</p>
+          <p style="word-break: break-word;"><a href="${BASE_URL}/verify-email/${generatedToken}">${BASE_URL}/verify-email/${generatedToken}</a></p>
+          <p>Need help? If you didn’t sign up for this account or have any questions, feel free to contact us.</p>
+          <p>Best regards,<br>The Platform Team</p>
+        </div>
+      `
+    });
+    
+        res.status(201).json({ message: "User registered successfully. Verification email sent.", user });
   } catch (error) { res.status(500).json({ message: "Server error", error: error.message }); }
 };
 
@@ -127,6 +148,12 @@ const login = async (req, res) => {
       return res.status(401).json({ 
         message: "Invalid email or password", 
         remainingAttempts: getRemainingAttempts(email)
+      });
+    }
+    if (user.accountStatus !== true) {
+      
+      return res.status(403).json({ 
+        message: "Your account is disabled. Please contact the administrator."
       });
     }
     
@@ -215,10 +242,139 @@ const googleLogin = async (req, res) => {
   }
 };
 
-const logout = async (req, res) => res.status(200).json({ message: "Logout function is missing" });
-const forgotPassword = async (req, res) => res.status(200).json({ message: "Forgot password function is missing" });
-const resetPassword = async (req, res) => res.status(200).json({ message: "Reset password function is missing" });
-const checkTokenValidity = async (req, res, next) => next();
+const logout = async (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (token) {
+      // Add token to invalidated set
+      invalidatedTokens.add(token);
+    }
+
+    // Clear session
+    if (req.session) {
+      req.session.destroy();
+    }
+
+    // Clear cookies with proper options
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'strict'
+    });
+
+    res.clearCookie('connect.sid', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'strict'
+    });
+
+    res.status(200).json({ message: "Logout successful" });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ message: "Error while logging out" });
+  }
+};
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const generatedToken = crypto.randomBytes(32).toString('hex');
+    const newToken = new PasswordResetToken({
+      token: generatedToken,
+      email: email,
+      expiresAt: Date.now() + 3600000
+    });
+
+    await newToken.save();
+
+    const transporter = nodemailer.createTransport({
+      service: 'hotmail',
+      auth: {
+        user: 'Firdaous.JEBRI@esprit.tn',
+        pass: 'xwbcgpyxnwghflrk'
+      },
+      tls: { rejectUnauthorized: false }
+    });
+
+    const mailOptions = {
+      from: 'Firdaous.JEBRI@esprit.tn',
+      to: email,
+      subject: 'Password Reset Request',
+      html: `<h1>Resetting your password</h1><p>You have requested a password reset. Click this link to reset your password:</p><a href="${BASE_URL}/reset-password/${generatedToken}">Reset Password</a> <p>If you have not requested this, please ignore this email.</p>`
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error('Error occurred:', error);
+        return res.status(500).json({ message: 'Error sending the password reset email', error: error.message });
+      } else {
+        res.status(200).json({ message: 'Password reset link sent.' });
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error processing the password reset request', error: error.message });
+  }
+};
+const resetPassword = async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  try {
+    // Vérifier si le token de réinitialisation est valide et non expiré
+    const passwordResetToken = await PasswordResetToken.findOne({ token });
+    if (!passwordResetToken) return res.status(400).json({ message: "Invalid or expired token" });
+    if (passwordResetToken.expiresAt < Date.now()) return res.status(400).json({ message: "The token has expired" });
+
+    // Trouver l'utilisateur correspondant au token de réinitialisation
+    const user = await User.findOne({ email: passwordResetToken.email });
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    // 🔹 Hachage du nouveau mot de passe avec la méthode du modèle (via le middleware `pre-save`)
+    user.password = newPassword;
+
+    // Sauvegarder l'utilisateur avec le mot de passe haché
+    await user.save({ validateBeforeSave: false });
+
+    // Supprimer le token de réinitialisation après utilisation
+    await PasswordResetToken.deleteOne({ token });
+
+    res.status(200).json({ message: "Password has been reset successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error resetting password", error: error.message });
+  }
+};
+
+const checkTokenValidity = async (req, res, next) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+
+    // No token provided
+    if (!token) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    // Check if token is invalidated
+    if (invalidatedTokens.has(token)) {
+      return res.status(401).json({ message: "Session expired" });
+    }
+
+    // Check session
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: "Invalid session" });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Auth check error:', error);
+    res.status(401).json({ message: "Authentication error" });
+  }
+};
+
 
 // Export all functions
 module.exports = {

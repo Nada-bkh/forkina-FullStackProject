@@ -149,4 +149,4 @@ router.post('/login', upload.single('faceImage'), async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

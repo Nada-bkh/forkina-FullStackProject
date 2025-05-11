@@ -5,7 +5,6 @@ import { Box, CircularProgress, Typography } from '@mui/material';
 const AuthTransfer = () => {
   const navigate = useNavigate();
   const [error, setError] = useState('');
-
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
       try {

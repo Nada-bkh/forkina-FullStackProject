@@ -1,3 +1,4 @@
+
 // routes/userRoutes.js
 const express = require('express');
 const router = express.Router();
@@ -92,9 +93,12 @@ router.put('/:id', authMiddleware, async (req, res) => {
 });
 
 // Other routes
+router.get('/me', authMiddleware, userController.getCurrentUser);
 router.post('/', userController.createUser);
 router.get('/', userController.getAllUsers);
 router.get('/:id', userController.getUserById);
+router.put('/:id', userController.updateUser);
 router.delete('/:id', userController.deleteUser);
+router.get('/classmates/:classId', authMiddleware, userController.getClassmates);
 
 module.exports = router;

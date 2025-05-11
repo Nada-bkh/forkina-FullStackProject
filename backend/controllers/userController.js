@@ -1,6 +1,19 @@
+
 // controllers/userController.js
 const User = require('../models/userModel');
-
+exports.getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+        .populate('classe')
+        .select('firstName lastName email githubUsername githubToken userRole');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 exports.createUser = async (req, res) => {
   try {
     const user = new User(req.body);
@@ -13,23 +26,31 @@ exports.createUser = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const { role } = req.query;
+    const { role, unassigned } = req.query;
     let query = {};
-    
+
     if (role) {
       query.userRole = role.toUpperCase();
     }
-    
-    const users = await User.find(query).populate('teamRef');
+
+    // If unassigned=true, only fetch students with no class assigned
+    if (unassigned === 'true' && role === 'STUDENT') {
+      query.classe = null;
+    }
+
+    const users = await User.find(query)
+        .populate('teamRef')
+        .populate('classe');
     return res.json(users);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 };
-
 exports.getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).populate('teamRef');
+    const user = await User.findById(req.params.id)
+        .populate('teamRef')
+        .populate('classe');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -38,7 +59,6 @@ exports.getUserById = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
-
 exports.updateUser = async (req, res) => {
   try {
     console.log('Updating user with ID:', req.params.id);
@@ -94,5 +114,24 @@ exports.deleteUser = async (req, res) => {
   } catch (err) {
     console.error('Delete error:', err);
     return res.status(500).json({ message: err.message });
+  }
+};
+exports.getClassmates = async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const user = await User.findById(req.user.id);
+    if (!user.classe || user.classe.toString() !== classId) {
+      return res.status(403).json({ error: 'You do not have access to this class' });
+    }
+
+    const classmates = await User.find({
+      classe: classId,
+      userRole: 'STUDENT',
+      _id: { $ne: req.user.id }, // Exclude the current user
+    }).select('firstName lastName email');
+
+    res.json(classmates);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };

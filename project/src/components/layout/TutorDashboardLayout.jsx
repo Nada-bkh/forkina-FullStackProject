@@ -74,7 +74,11 @@ const TutorDashboardLayout = () => {
                             variant="contained"
                             component={Link}
                             to="/tutor/sonarqube-dashboard"
-                            sx={{ backgroundColor: '#dd2825' }}
+                            sx={{
+                                backgroundColor: '#dd2825',
+                                color: 'white',
+                                '&:hover': { backgroundColor: '#c42020' }
+                        }}
                         >
                             View Code Quality Dashboard
                         </Button>

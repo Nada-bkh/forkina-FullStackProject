@@ -42,6 +42,7 @@ import EvaluationGrid from "./pages/tutor/EvaluationGrid.jsx";
 import EvaluationDetail from "./pages/tutor/TeamEvaluationView.jsx";
 import TeamProjects from "./pages/student/TeamProjects.jsx";
 import SonarQubeDashboard from "./pages/tutor/SonarQubeDashboard.jsx";
+import ProjectDetailView from "./pages/student/ProjectDetailView.jsx";
 const theme = createTheme({
   palette: {
     primary: {
@@ -140,6 +141,7 @@ const App = () => (
                 <Route path="tasks" element={<TasksList role="STUDENT" />} />
                 <Route path="tasks/:taskId" element={<TaskDetails role="STUDENT" />} />
                 <Route path="team" element={<TeamManagement />} />
+                <Route path="/student/projectgithub/:projectId" element={<ProjectDetailView role="STUDENT" />} />
               </Route>
 
               {/* Tutor Dashboard Routes */}

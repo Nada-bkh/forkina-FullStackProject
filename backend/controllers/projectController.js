@@ -717,4 +717,27 @@ exports.assignTeamToProject = async (req, res) => {
     }
 };
 
+exports.getProjectDetails = async (req, res) => {
+    try {
+        const { projectId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(projectId)) {
+            return res.status(400).json({ message: 'Invalid project ID format' });
+        }
+
+        const project = await Project.findById(projectId);
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' });
+        }
+
+        // You can customize what data you want to return here
+        // You might want to populate team members or other related data
+
+        return res.status(200).json(project);
+    } catch (error) {
+        console.error('Error fetching project details:', error);
+        return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
 module.exports = exports;

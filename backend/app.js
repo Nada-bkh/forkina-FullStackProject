@@ -26,6 +26,8 @@ const projectRequestRoutes = require('./routes/projectRequestRoutes');
 const projectApplicationRoutes = require('./routes/projectApplicationRoutes');
 const assignmentRoutes = require('./routes/assignments.js');
 const sonarqubeRoutes = require('./routes/analytics.js');
+const repositories = require('./routes/repositoryRoutes.js');
+const { setupRepositoryFeatures } = require('./integration/repositoryIntegration');
 const app = express();
 
 // Connect to MongoDB
@@ -63,6 +65,9 @@ app.use(express.static(path.join(__dirname, '../frontend/dist')));
 // Serve uploads directory statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+
+setupRepositoryFeatures(app);
+
 // API Routes
 app.use("/auth", googleAuthRoutes); // Google Auth routes
 app.use("/api/auth", authRoutes);
@@ -81,6 +86,7 @@ app.use('/api/classes', classRoutes); // Add this line
 app.use('/api/project-requests', projectRequestRoutes);
 app.use('/api/project-applications', projectApplicationRoutes);
 app.use('/api/assignments', assignmentRoutes);
+app.use('/api/repositories', repositories )
 app.use('/api', sonarqubeRoutes);
 // Handle React routing, return all requests to React app
 app.get('*', (req, res) => {

@@ -39,6 +39,14 @@ const projectSchema = new Schema(
             ref: 'User',
             required: false
         },
+        githubRepository: {
+            type: String,
+            trim: true
+        },
+        repositoryDetails: {
+            type: Schema.Types.Mixed,
+            default: null
+        },
         teamRef: [{ type: Schema.Types.ObjectId, ref: 'Team' }], // Already optional
         members: [{
             user: {
@@ -66,6 +74,8 @@ const projectSchema = new Schema(
     },
     { timestamps: true }
 );
+
+const Project = mongoose.models.Project || mongoose.model('Project', projectSchema);
 
 // Calculate progress based on completed tasks and update progress history
 projectSchema.methods.updateProgress = async function() {
